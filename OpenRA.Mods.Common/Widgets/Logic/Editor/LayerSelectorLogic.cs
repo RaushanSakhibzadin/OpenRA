@@ -15,11 +15,11 @@ using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
 {
+	[IncludeStaticFluentReferences(typeof(AddResourcesEditorAction))]
 	public class LayerSelectorLogic : ChromeLogic
 	{
 		readonly EditorViewportControllerWidget editor;
 		readonly WorldRenderer worldRenderer;
-		readonly EditorCursorLayer editorCursor;
 
 		readonly ScrollPanelWidget layerTemplateList;
 		readonly ScrollItemWidget layerPreviewTemplate;
@@ -29,8 +29,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			this.worldRenderer = worldRenderer;
 			editor = widget.Parent.Parent.Get<EditorViewportControllerWidget>("MAP_EDITOR");
-			editorCursor = worldRenderer.World.WorldActor.Trait<EditorCursorLayer>();
-
 			layerTemplateList = widget.Get<ScrollPanelWidget>("LAYERTEMPLATE_LIST");
 			layerTemplateList.Layout = new GridLayout(layerTemplateList);
 			layerPreviewTemplate = layerTemplateList.Get<ScrollItemWidget>("LAYERPREVIEW_TEMPLATE");
@@ -46,7 +44,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				foreach (var resourceType in resourceRenderer.ResourceTypes)
 				{
 					var newResourcePreviewTemplate = ScrollItemWidget.Setup(layerPreviewTemplate,
-						() => editorCursor.Type == EditorCursorType.Resource && editorCursor.ResourceType == resourceType,
+						() => editor.CurrentBrush is EditorResourceBrush brush && brush.ResourceType == resourceType,
 						() => editor.SetBrush(new EditorResourceBrush(editor, resourceType, worldRenderer)));
 
 					newResourcePreviewTemplate.Bounds.X = 0;

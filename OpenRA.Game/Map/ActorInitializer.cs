@@ -154,7 +154,7 @@ namespace OpenRA
 
 		public virtual void Initialize(MiniYaml yaml)
 		{
-			Initialize((T)FieldLoader.GetValue(nameof(value), typeof(T), yaml.Value));
+			Initialize(FieldLoader.GetValue<T>(nameof(value), yaml.Value));
 		}
 
 		public virtual void Initialize(T value)
@@ -216,10 +216,8 @@ namespace OpenRA
 		}
 	}
 
-	public class LocationInit : ValueActorInit<CPos>, ISingleInstanceInit
+	public class LocationInit(CPos value) : ValueActorInit<CPos>(value), ISingleInstanceInit
 	{
-		public LocationInit(CPos value)
-			: base(value) { }
 	}
 
 	public class OwnerInit : ActorInit, ISingleInstanceInit

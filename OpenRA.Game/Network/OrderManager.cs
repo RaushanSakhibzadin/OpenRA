@@ -22,12 +22,12 @@ namespace OpenRA.Network
 	{
 		const OrderPacket ClientDisconnected = null;
 
-		[TranslationReference("frame")]
+		[FluentReference("frame")]
 		const string DesyncCompareLogs = "notification-desync-compare-logs";
 
 		readonly SyncReport syncReport;
-		readonly Dictionary<int, Queue<(int Frame, OrderPacket Orders)>> pendingOrders = new();
-		readonly Dictionary<int, (int SyncHash, ulong DefeatState)> syncForFrame = new();
+		readonly Dictionary<int, Queue<(int Frame, OrderPacket Orders)>> pendingOrders = [];
+		readonly Dictionary<int, (int SyncHash, ulong DefeatState)> syncForFrame = [];
 
 		public Session LobbyInfo = new();
 
@@ -53,11 +53,11 @@ namespace OpenRA.Network
 		internal int GameSaveLastFrame = -1;
 		internal int GameSaveLastSyncFrame = -1;
 
-		readonly List<Order> localOrders = new();
-		readonly List<Order> localImmediateOrders = new();
+		readonly List<Order> localOrders = [];
+		readonly List<Order> localImmediateOrders = [];
 
-		readonly List<ClientOrder> processClientOrders = new();
-		readonly List<int> processClientsToRemove = new();
+		readonly List<ClientOrder> processClientOrders = [];
+		readonly List<int> processClientsToRemove = [];
 
 		bool disposed;
 		bool generateSyncReport = false;
@@ -91,7 +91,7 @@ namespace OpenRA.Network
 			World.OutOfSync();
 			IsOutOfSync = true;
 
-			TextNotificationsManager.AddSystemLine(DesyncCompareLogs, Translation.Arguments("frame", frame));
+			TextNotificationsManager.AddSystemLine(DesyncCompareLogs, "frame", frame);
 		}
 
 		public void StartGame()

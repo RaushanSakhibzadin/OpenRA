@@ -37,11 +37,11 @@ namespace OpenRA.Mods.Common.Scripting
 		public int MaxHealth => health.MaxHP;
 
 		[Desc("Kill the actor. damageTypes may be omitted, specified as a string, or as table of strings.")]
-		public void Kill(object damageTypes = null)
+		public void Kill([ScriptEmmyTypeOverride("string|{ [unknown]: string }")] object damageTypes = null)
 		{
 			Damage damage;
 			if (damageTypes is string d)
-				damage = new Damage(health.MaxHP, new BitSet<DamageType>(new[] { d }));
+				damage = new Damage(health.MaxHP, new BitSet<DamageType>([d]));
 			else if (damageTypes is LuaTable t && t.TryGetClrValue(out string[] ds))
 				damage = new Damage(health.MaxHP, new BitSet<DamageType>(ds));
 			else

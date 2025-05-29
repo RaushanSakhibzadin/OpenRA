@@ -28,7 +28,7 @@ namespace OpenRA.Widgets
 
 		public static TickTime LastTickTime = new(() => Timestep, Game.RunTime);
 
-		static readonly Stack<Widget> WindowList = new();
+		static readonly Stack<Widget> WindowList = [];
 
 		public static Widget MouseFocusWidget;
 		public static Widget KeyboardFocusWidget;
@@ -60,7 +60,7 @@ namespace OpenRA.Widgets
 
 		public static Widget OpenWindow(string id)
 		{
-			return OpenWindow(id, new WidgetArgs());
+			return OpenWindow(id, []);
 		}
 
 		public static Widget OpenWindow(string id, WidgetArgs args)
@@ -182,21 +182,13 @@ namespace OpenRA.Widgets
 		protected virtual void Dispose(bool disposing) { }
 	}
 
-	public struct WidgetBounds
+	public struct WidgetBounds(int x, int y, int width, int height)
 	{
-		public int X, Y, Width, Height;
+		public int X = x, Y = y, Width = width, Height = height;
 		public readonly int Left => X;
 		public readonly int Right => X + Width;
 		public readonly int Top => Y;
 		public readonly int Bottom => Y + Height;
-
-		public WidgetBounds(int x, int y, int width, int height)
-		{
-			X = x;
-			Y = y;
-			Width = width;
-			Height = height;
-		}
 
 		public readonly Rectangle ToRectangle()
 		{
@@ -208,7 +200,7 @@ namespace OpenRA.Widgets
 	{
 		string defaultCursor = null;
 
-		public readonly List<Widget> Children = new();
+		public readonly List<Widget> Children = [];
 
 		// Info defined in YAML
 		public string Id = null;
@@ -216,7 +208,7 @@ namespace OpenRA.Widgets
 		public IntegerExpression Y;
 		public IntegerExpression Width;
 		public IntegerExpression Height;
-		public string[] Logic = Array.Empty<string>();
+		public string[] Logic = [];
 		public ChromeLogic[] LogicObjects { get; private set; }
 		public bool Visible = true;
 		public bool IgnoreMouseOver;
@@ -288,14 +280,12 @@ namespace OpenRA.Widgets
 
 			var substitutions = args.TryGetValue("substitutions", out var subs) ?
 				new Dictionary<string, int>((Dictionary<string, int>)subs) :
-				new Dictionary<string, int>();
+				[];
 
-			substitutions.Add("WINDOW_RIGHT", Game.Renderer.Resolution.Width);
-			substitutions.Add("WINDOW_BOTTOM", Game.Renderer.Resolution.Height);
-			substitutions.Add("PARENT_RIGHT", parentBounds.Width);
-			substitutions.Add("PARENT_LEFT", parentBounds.Left);
-			substitutions.Add("PARENT_TOP", parentBounds.Top);
-			substitutions.Add("PARENT_BOTTOM", parentBounds.Height);
+			substitutions.Add("WINDOW_WIDTH", Game.Renderer.Resolution.Width);
+			substitutions.Add("WINDOW_HEIGHT", Game.Renderer.Resolution.Height);
+			substitutions.Add("PARENT_WIDTH", parentBounds.Width);
+			substitutions.Add("PARENT_HEIGHT", parentBounds.Height);
 
 			var readOnlySubstitutions = new ReadOnlyDictionary<string, int>(substitutions);
 			var width = Width?.Evaluate(readOnlySubstitutions) ?? 0;
@@ -626,12 +616,14 @@ namespace OpenRA.Widgets
 
 		public ContainerWidget() { IgnoreMouseOver = true; }
 		public ContainerWidget(ContainerWidget other)
-			: base(other) { IgnoreMouseOver = true; }
+			: base(other)
+		{
+			ClickThrough = other.ClickThrough;
+			IgnoreMouseOver = true;
+		}
 
 		public override string GetCursor(int2 pos) { return null; }
-		public override Widget Clone() { return new ContainerWidget(this); }
-		public Func<KeyInput, bool> OnKeyPress = _ => false;
-		public override bool HandleKeyPress(KeyInput e) { return OnKeyPress(e); }
+		public override ContainerWidget Clone() { return new ContainerWidget(this); }
 
 		public override bool HandleMouseInput(MouseInput mi)
 		{
@@ -655,7 +647,7 @@ namespace OpenRA.Widgets
 			IsDisabled = () => other.Disabled;
 		}
 
-		public override Widget Clone() { return new InputWidget(this); }
+		public override InputWidget Clone() { return new InputWidget(this); }
 	}
 
 	public class WidgetArgs : Dictionary<string, object>
@@ -668,7 +660,7 @@ namespace OpenRA.Widgets
 
 	public sealed class Mediator
 	{
-		readonly TypeDictionary types = new();
+		readonly TypeDictionary types = [];
 
 		public void Subscribe<T>(T instance)
 		{

@@ -39,6 +39,7 @@ Players:
 		Enemies: Atreides, Harkonnen, Creeps
 	PlayerReference@Atreides:
 		Name: Atreides
+		Bot: campaign
 		LockFaction: True
 		Faction: atreides
 		LockColor: True
@@ -47,6 +48,7 @@ Players:
 		Enemies: Ordos, Creeps
 	PlayerReference@Harkonnen:
 		Name: Harkonnen
+		Bot: campaign
 		LockFaction: True
 		Faction: harkonnen
 		LockColor: True
@@ -577,4 +579,4 @@ Actors:
 
 Rules: d2k|rules/campaign-rules.yaml, d2k|rules/campaign-tooltips.yaml, d2k|rules/campaign-palettes.yaml, rules.yaml
 
-Translations: d2k|languages/lua/en.ftl, d2k|languages/campaign/en.ftl
+FluentMessages: d2k|fluent/lua.ftl, d2k|fluent/campaign.ftl

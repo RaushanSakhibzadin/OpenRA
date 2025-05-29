@@ -9,7 +9,6 @@
  */
 #endregion
 
-using System;
 using System.Collections.Generic;
 using OpenRA.Traits;
 
@@ -30,10 +29,10 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Palette used for the icon.")]
 		public readonly string IconPalette = "chrome";
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		public readonly string Name = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		public readonly string Description = null;
 
 		[Desc("Allow multiple instances of the same support power.")]
@@ -46,18 +45,22 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Cursor to display for using this support power.")]
 		public readonly string Cursor = "ability";
 
+		[CursorReference]
+		[Desc("Cursor when unable to activate on this position. ")]
+		public readonly string BlockedCursor = "generic-blocked";
+
 		[Desc("If set to true, the support power will be fully charged when it becomes available. " +
 			"Normal rules apply for subsequent charges.")]
 		public readonly bool StartFullyCharged = false;
 
-		public readonly string[] Prerequisites = Array.Empty<string>();
+		public readonly string[] Prerequisites = [];
 
 		public readonly string DetectedSound = null;
 
 		[NotificationReference("Speech")]
 		public readonly string DetectedSpeechNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		public readonly string DetectedTextNotification = null;
 
 		public readonly string BeginChargeSound = null;
@@ -65,7 +68,7 @@ namespace OpenRA.Mods.Common.Traits
 		[NotificationReference("Speech")]
 		public readonly string BeginChargeSpeechNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		public readonly string BeginChargeTextNotification = null;
 
 		public readonly string EndChargeSound = null;
@@ -73,7 +76,7 @@ namespace OpenRA.Mods.Common.Traits
 		[NotificationReference("Speech")]
 		public readonly string EndChargeSpeechNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		public readonly string EndChargeTextNotification = null;
 
 		public readonly string SelectTargetSound = null;
@@ -81,7 +84,7 @@ namespace OpenRA.Mods.Common.Traits
 		[NotificationReference("Speech")]
 		public readonly string SelectTargetSpeechNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		public readonly string SelectTargetTextNotification = null;
 
 		public readonly string InsufficientPowerSound = null;
@@ -89,7 +92,7 @@ namespace OpenRA.Mods.Common.Traits
 		[NotificationReference("Speech")]
 		public readonly string InsufficientPowerSpeechNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		public readonly string InsufficientPowerTextNotification = null;
 
 		public readonly string LaunchSound = null;
@@ -97,7 +100,7 @@ namespace OpenRA.Mods.Common.Traits
 		[NotificationReference("Speech")]
 		public readonly string LaunchSpeechNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		public readonly string LaunchTextNotification = null;
 
 		public readonly string IncomingSound = null;
@@ -105,7 +108,7 @@ namespace OpenRA.Mods.Common.Traits
 		[NotificationReference("Speech")]
 		public readonly string IncomingSpeechNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		public readonly string IncomingTextNotification = null;
 
 		[Desc("Defines to which players the timer is shown.")]
@@ -155,13 +158,13 @@ namespace OpenRA.Mods.Common.Traits
 		protected SupportPowerInfo() { OrderName = GetType().Name + "Order"; }
 	}
 
-	public class SupportPower : PausableConditionalTrait<SupportPowerInfo>
+	public abstract class SupportPower : PausableConditionalTrait<SupportPowerInfo>
 	{
 		public readonly Actor Self;
 		readonly SupportPowerInfo info;
 		protected RadarPing ping;
 
-		public SupportPower(Actor self, SupportPowerInfo info)
+		protected SupportPower(Actor self, SupportPowerInfo info)
 			: base(info)
 		{
 			Self = self;
@@ -209,7 +212,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public virtual void SelectTarget(Actor self, string order, SupportPowerManager manager)
 		{
-			self.World.OrderGenerator = new SelectGenericPowerTarget(order, manager, info.Cursor, MouseButton.Left);
+			self.World.OrderGenerator = new SelectGenericPowerTarget(order, manager, info, MouseButton.Left);
 		}
 
 		public virtual void Activate(Actor self, Order order, SupportPowerManager manager)

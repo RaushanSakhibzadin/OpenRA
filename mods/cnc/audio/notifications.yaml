@@ -43,6 +43,7 @@ Speech:
 		StartGame:
 		GameLoaded:
 		GameSaved:
+		StructureSold:
 		Training: bldging1
 		UnitDestroyed: dead1
 		UnitLost: unitlost
@@ -64,6 +65,10 @@ Sounds:
 			VolumeModifier: 0.33
 			InterruptType: Overlap
 		ChatLine: scold1
+			InterruptType: Interrupt
+		LobbyOptionChanged: beepy3
+			InterruptType: Interrupt
+		PlayerLeft: country1
 			InterruptType: Interrupt
 		ClickDisabledSound: scold2
 			InterruptType: Overlap

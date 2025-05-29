@@ -30,17 +30,17 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Every time another production building of the same queue is",
 			"constructed, the build times of all actors in the queue",
 			"modified by a percentage of the original time.")]
-		public readonly int[] BuildingCountBuildTimeMultipliers = { 100, 86, 75, 67, 60, 55, 50 };
+		public readonly int[] BuildingCountBuildTimeMultipliers = [100, 86, 75, 67, 60, 55, 50];
 
 		[Desc("Build time modifier multiplied by the number of parallel production for producing different actors at the same time.")]
-		public readonly int[] ParallelPenaltyBuildTimeMultipliers = { 100, 116, 133, 150, 166, 183, 200, 216, 233, 250 };
+		public readonly int[] ParallelPenaltyBuildTimeMultipliers = [100, 116, 133, 150, 166, 183, 200, 216, 233, 250];
 
 		public override object Create(ActorInitializer init) { return new ClassicParallelProductionQueue(init, this); }
 	}
 
 	public class ClassicParallelProductionQueue : ProductionQueue
 	{
-		static readonly ActorInfo[] NoItems = Array.Empty<ActorInfo>();
+		static readonly ActorInfo[] NoItems = [];
 
 		readonly Actor self;
 		readonly ClassicParallelProductionQueueInfo info;
@@ -192,6 +192,12 @@ namespace OpenRA.Mods.Common.Traits
 			base.BeginProduction(item, false);
 		}
 
+		protected override void PauseProduction(string itemName, bool paused)
+		{
+			foreach (var item in Queue.Where(a => a.Item == itemName))
+				item.Pause(paused);
+		}
+
 		public override int GetBuildTime(ActorInfo unit, BuildableInfo bi)
 		{
 			if (developerMode.FastBuild)
@@ -219,7 +225,9 @@ namespace OpenRA.Mods.Common.Traits
 				.GroupBy(i => i.Item)
 				.ToList()
 				.Count;
-			return item.RemainingTimeActual * parallelBuilds * info.ParallelPenaltyBuildTimeMultipliers[Math.Min(parallelBuilds - 1, info.ParallelPenaltyBuildTimeMultipliers.Length - 1)] / 100;
+			return item.RemainingTimeActual *
+				parallelBuilds *
+				info.ParallelPenaltyBuildTimeMultipliers[Math.Min(parallelBuilds - 1, info.ParallelPenaltyBuildTimeMultipliers.Length - 1)] / 100;
 		}
 	}
 }

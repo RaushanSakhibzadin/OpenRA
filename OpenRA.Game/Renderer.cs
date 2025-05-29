@@ -27,7 +27,7 @@ namespace OpenRA
 		public SpriteRenderer WorldSpriteRenderer { get; }
 		public RgbaSpriteRenderer WorldRgbaSpriteRenderer { get; }
 		public RgbaColorRenderer WorldRgbaColorRenderer { get; }
-		public IRenderer[] WorldRenderers = Array.Empty<IRenderer>();
+		public IRenderer[] WorldRenderers = [];
 		public RgbaColorRenderer RgbaColorRenderer { get; }
 		public SpriteRenderer SpriteRenderer { get; }
 		public RgbaSpriteRenderer RgbaSpriteRenderer { get; }
@@ -46,7 +46,7 @@ namespace OpenRA
 
 		readonly IVertexBuffer<Vertex> tempVertexBuffer;
 		readonly IIndexBuffer quadIndexBuffer;
-		readonly Stack<Rectangle> scissorState = new();
+		readonly Stack<Rectangle> scissorState = [];
 		readonly ITexture worldBufferSnapshot;
 
 		IFrameBuffer screenBuffer;
@@ -79,6 +79,7 @@ namespace OpenRA
 
 		Rectangle lastWorldViewport = Rectangle.Empty;
 		ITexture currentPaletteTexture;
+		int currentPaletteHeight = 0;
 		IBatchRenderer currentBatchRenderer;
 		RenderType renderType = RenderType.None;
 
@@ -106,7 +107,7 @@ namespace OpenRA
 			RgbaSpriteRenderer = new RgbaSpriteRenderer(SpriteRenderer);
 			RgbaColorRenderer = new RgbaColorRenderer(SpriteRenderer);
 
-			tempVertexBuffer = Context.CreateVertexBuffer<Vertex>(TempVertexBufferSize);
+			tempVertexBuffer = Context.CreateEmptyVertexBuffer<Vertex>(TempVertexBufferSize);
 			quadIndexBuffer = Context.CreateIndexBuffer(Util.CreateQuadIndices(TempIndexBufferSize / 6));
 			worldBufferSnapshot = Context.CreateTexture();
 		}
@@ -132,7 +133,7 @@ namespace OpenRA
 			using (new PerfTimer("SpriteFonts"))
 			{
 				fontSheetBuilder?.Dispose();
-				fontSheetBuilder = new SheetBuilder(SheetType.BGRA, 512);
+				fontSheetBuilder = new SheetBuilder(SheetType.BGRA, modData.Manifest.FontSheetSize);
 				Fonts = modData.Manifest.Get<Fonts>().FontList.ToDictionary(x => x.Key,
 					x => new SpriteFont(
 						platform, x.Value.Font, modData.DefaultFileSystem.Open(x.Value.Font).ReadAllBytes(),
@@ -154,16 +155,9 @@ namespace OpenRA
 			};
 		}
 
-		public void InitializeDepthBuffer(MapGrid mapGrid)
+		public void SetDepthMargin(float depthMargin)
 		{
-			// The depth buffer needs to be initialized with enough range to cover:
-			//  - the height of the screen
-			//  - the z-offset of tiles from MaxTerrainHeight below the bottom of the screen (pushed into view)
-			//  - additional z-offset from actors on top of MaxTerrainHeight terrain
-			//  - a small margin so that tiles rendered partially above the top edge of the screen aren't pushed behind the clip plane
-			// We need an offset of mapGrid.MaximumTerrainHeight * mapGrid.TileSize.Height / 2 to cover the terrain height
-			// and choose to use mapGrid.MaximumTerrainHeight * mapGrid.TileSize.Height / 4 for each of the actor and top-edge cases
-			depthMargin = mapGrid == null || !mapGrid.EnableDepthBuffer ? 0 : mapGrid.TileSize.Height * mapGrid.MaximumTerrainHeight;
+			this.depthMargin = depthMargin;
 		}
 
 		void BeginFrame()
@@ -288,12 +282,15 @@ namespace OpenRA
 				screenBuffer.Bind();
 
 				var scale = Window.EffectiveWindowScale;
-				var bufferScale = new float3((int)(screenSprite.Bounds.Width / scale) / worldSprite.Size.X, (int)(-screenSprite.Bounds.Height / scale) / worldSprite.Size.Y, 1f);
+				var bufferScale = new float3(
+					(int)(screenSprite.Bounds.Width / scale) / worldSprite.Size.X,
+					(int)(-screenSprite.Bounds.Height / scale) / worldSprite.Size.Y,
+					1f);
 
-				SpriteRenderer.SetAntialiasingPixelsPerTexel(Window.SurfaceSize.Height * 1f / worldSprite.Bounds.Height);
+				SpriteRenderer.EnablePixelArtScaling(true);
 				RgbaSpriteRenderer.DrawSprite(worldSprite, float3.Zero, bufferScale);
 				Flush();
-				SpriteRenderer.SetAntialiasingPixelsPerTexel(0);
+				SpriteRenderer.EnablePixelArtScaling(false);
 			}
 			else
 			{
@@ -309,11 +306,13 @@ namespace OpenRA
 		{
 			// Note: palette.Texture and palette.ColorShifts are updated at the same time
 			// so we only need to check one of the two to know whether we must update the textures
-			if (palette.Texture == currentPaletteTexture)
+			// also compare heights in case new palettes have been added
+			if (palette.Texture == currentPaletteTexture && palette.Height == currentPaletteHeight)
 				return;
 
 			Flush();
 			currentPaletteTexture = palette.Texture;
+			currentPaletteHeight = palette.Height;
 
 			SpriteRenderer.SetPalette(palette);
 			WorldSpriteRenderer.SetPalette(palette);
@@ -334,7 +333,8 @@ namespace OpenRA
 			// Render the compositor buffers to the screen
 			// HACK / PERF: Fudge the coordinates to cover the actual window while keeping the buffer viewport parameters
 			// This saves us two redundant (and expensive) SetViewportParams each frame
-			RgbaSpriteRenderer.DrawSprite(screenSprite, new float3(0, lastBufferSize.Height, 0), new float3(lastBufferSize.Width / screenSprite.Size.X, -lastBufferSize.Height / screenSprite.Size.Y, 1f));
+			RgbaSpriteRenderer.DrawSprite(screenSprite, new float3(0, lastBufferSize.Height, 0),
+				new float3(lastBufferSize.Width / screenSprite.Size.X, -lastBufferSize.Height / screenSprite.Size.Y, 1f));
 			Flush();
 
 			Window.PumpInput(inputHandler);
@@ -406,9 +406,9 @@ namespace OpenRA
 			return Context.CreateShader(bindings);
 		}
 
-		public IVertexBuffer<T> CreateVertexBuffer<T>(int length) where T : struct
+		public IVertexBuffer<T> CreateVertexBuffer<T>(T[] data, bool dynamic) where T : struct
 		{
-			return Context.CreateVertexBuffer<T>(length);
+			return Context.CreateVertexBuffer(data, dynamic);
 		}
 
 		public void EnableScissor(Rectangle rect)
@@ -492,7 +492,7 @@ namespace OpenRA
 				throw new InvalidOperationException($"EndFrame called with renderType = {renderType}, expected RenderType.UI.");
 
 			Flush();
-			SpriteRenderer.SetAntialiasingPixelsPerTexel(Window.EffectiveWindowScale);
+			SpriteRenderer.EnablePixelArtScaling(true);
 		}
 
 		public void DisableAntialiasingFilter()
@@ -501,7 +501,7 @@ namespace OpenRA
 				throw new InvalidOperationException($"EndFrame called with renderType = {renderType}, expected RenderType.UI.");
 
 			Flush();
-			SpriteRenderer.SetAntialiasingPixelsPerTexel(0);
+			SpriteRenderer.EnablePixelArtScaling(false);
 		}
 
 		public void GrabWindowMouseFocus()

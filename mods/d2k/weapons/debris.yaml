@@ -12,7 +12,7 @@ Debris:
 		BounceRangeModifier: 20
 	Warhead@1Dam: SpreadDamage
 		Damage: 1500
-		Spread: 512
+		Spread: 1c0
 		Falloff: 100, 0
 		Versus:
 			none: 20
@@ -44,7 +44,7 @@ Debris2:
 		TrailInterval: 1
 	Warhead@1Dam: SpreadDamage
 		Damage: 2500
-		Spread: 1c0
+		Spread: 2c0
 		Versus:
 			none: 90
 			wall: 5
@@ -77,3 +77,18 @@ Debris4:
 	Projectile: Bullet
 		Image: shrapnel4
 		TrailImage: large_trail
+
+DebrisMissile:
+	Inherits: ^Missile
+	-Report:
+	Projectile: Missile
+		HorizontalRateOfTurn: 20
+		MinimumLaunchAngle: 120
+		MaximumLaunchAngle: 250
+		VerticalRateOfTurn: 20
+		CruiseAltitude: 0
+		ExplodeWhenEmpty: false
+		Speed: 250
+	Warhead@1Dam: SpreadDamage
+		Spread: 1c0
+		Damage: 2000

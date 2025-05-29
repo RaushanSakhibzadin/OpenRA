@@ -17,7 +17,7 @@ namespace OpenRA.Platforms.Default
 	sealed class VertexBuffer<T> : ThreadAffine, IDisposable, IVertexBuffer<T>
 			where T : struct
 	{
-		static readonly int VertexSize = Marshal.SizeOf(typeof(T));
+		static readonly int VertexSize = Marshal.SizeOf<T>();
 		uint buffer;
 		bool disposed;
 
@@ -53,6 +53,28 @@ namespace OpenRA.Platforms.Default
 			{
 				ptr.Free();
 			}
+		}
+
+		public VertexBuffer(T[] data, bool dynamic = true)
+		{
+			OpenGL.glGenBuffers(1, out buffer);
+			OpenGL.CheckGLError();
+			Bind();
+
+			var ptr = GCHandle.Alloc(data, GCHandleType.Pinned);
+			try
+			{
+				OpenGL.glBufferData(OpenGL.GL_ARRAY_BUFFER,
+					new IntPtr(VertexSize * data.Length),
+					ptr.AddrOfPinnedObject(),
+					dynamic ? OpenGL.GL_DYNAMIC_DRAW : OpenGL.GL_STATIC_DRAW);
+			}
+			finally
+			{
+				ptr.Free();
+			}
+
+			OpenGL.CheckGLError();
 		}
 
 		public void SetData(T[] data, int length)

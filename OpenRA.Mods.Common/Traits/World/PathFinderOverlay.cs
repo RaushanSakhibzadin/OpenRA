@@ -23,6 +23,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[TraitLocation(SystemActors.World)]
+	[IncludeStaticFluentReferences(typeof(PathFinderOverlay))]
 	[Desc("Renders a visualization overlay showing how the pathfinder searches for paths. Attach this to the world actor.")]
 	public class PathFinderOverlayInfo : TraitInfo, Requires<PathFinderInfo>
 	{
@@ -41,12 +42,12 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		const string CommandName = "path-debug";
 
-		[TranslationReference]
+		[FluentReference]
 		const string CommandDescription = "description-path-debug-overlay";
 
 		sealed class Record : PathSearch.IRecorder, IEnumerable<(CPos Source, CPos Destination, int CostSoFar, int EstimatedRemainingCost)>
 		{
-			readonly Dictionary<CPos, (CPos Source, int CostSoFar, int EstimatedRemainingCost)> edges = new();
+			readonly Dictionary<CPos, (CPos Source, int CostSoFar, int EstimatedRemainingCost)> edges = [];
 
 			public void Add(CPos source, CPos destination, int costSoFar, int estimatedRemainingCost)
 			{
@@ -153,23 +154,29 @@ namespace OpenRA.Mods.Common.Traits
 			if (!Enabled || forActor == null)
 				yield break;
 
+			// Cull edges/costs to the visible viewport region to minimise rendering costs.
+			// But don't cull the target lines or abstract edges.
+			// These are long lines and so can easily clip into the region even if both ends are off-screen.
+			// There's not too many of them, so prefer to render them regardless.
+			var visibleRegion = wr.Viewport.AllVisibleCells;
+
 			foreach (var sourceCell in sourceCells)
-				yield return new TargetLineRenderable(new[]
-				{
+				yield return new TargetLineRenderable(
+				[
 					self.World.Map.CenterOfSubCell(sourceCell, SubCell.FullCell),
 					self.World.Map.CenterOfSubCell(targetCell ?? sourceCell, SubCell.FullCell),
-				}, info.TargetLineColor, 8, 8);
+				], info.TargetLineColor, 8, 8);
 
-			foreach (var line in RenderEdges(self, abstractEdges1, 8, 6, info.AbstractColor1))
+			foreach (var line in RenderEdges(self, abstractEdges1, 8, 6, info.AbstractColor1, null))
 				yield return line;
 
-			foreach (var line in RenderEdges(self, abstractEdges2, 6, 4, info.AbstractColor2))
+			foreach (var line in RenderEdges(self, abstractEdges2, 6, 4, info.AbstractColor2, null))
 				yield return line;
 
-			foreach (var line in RenderEdges(self, localEdges1, 5, 3, info.LocalColor1))
+			foreach (var line in RenderEdges(self, localEdges1, 5, 3, info.LocalColor1, visibleRegion))
 				yield return line;
 
-			foreach (var line in RenderEdges(self, localEdges2, 4, 2, info.LocalColor2))
+			foreach (var line in RenderEdges(self, localEdges2, 4, 2, info.LocalColor2, visibleRegion))
 				yield return line;
 
 			if (!info.ShowCosts)
@@ -178,34 +185,41 @@ namespace OpenRA.Mods.Common.Traits
 			const int HorizontalOffset = 320;
 			const int VerticalOffset = 512;
 
-			foreach (var line in RenderCosts(self, abstractEdges1, new WVec(-HorizontalOffset, -VerticalOffset, 0), font, info.AbstractColor1))
+			foreach (var line in RenderCosts(self, abstractEdges1, new WVec(-HorizontalOffset, -VerticalOffset, 0), font, info.AbstractColor1, visibleRegion))
 				yield return line;
 
-			foreach (var line in RenderCosts(self, abstractEdges2, new WVec(-HorizontalOffset, VerticalOffset, 0), font, info.AbstractColor2))
+			foreach (var line in RenderCosts(self, abstractEdges2, new WVec(-HorizontalOffset, VerticalOffset, 0), font, info.AbstractColor2, visibleRegion))
 				yield return line;
 
-			foreach (var line in RenderCosts(self, localEdges1, new WVec(HorizontalOffset, -VerticalOffset, 0), font, info.LocalColor1))
+			foreach (var line in RenderCosts(self, localEdges1, new WVec(HorizontalOffset, -VerticalOffset, 0), font, info.LocalColor1, visibleRegion))
 				yield return line;
 
-			foreach (var line in RenderCosts(self, localEdges2, new WVec(HorizontalOffset, VerticalOffset, 0), font, info.LocalColor2))
+			foreach (var line in RenderCosts(self, localEdges2, new WVec(HorizontalOffset, VerticalOffset, 0), font, info.LocalColor2, visibleRegion))
 				yield return line;
 		}
 
-		static IEnumerable<IRenderable> RenderEdges(Actor self, Record edges, int nodeSize, int edgeSize, Color color)
+		static IEnumerable<IRenderable> RenderEdges(Actor self, Record edges, int nodeSize, int edgeSize, Color color, ProjectedCellRegion visibleRegion)
 		{
 			if (edges == null)
 				yield break;
 
 			var customColor = CustomLayerColor(color);
 			foreach (var (source, destination, _, _) in edges)
-				yield return new TargetLineRenderable(new[]
-				{
+			{
+				var srcUv = (PPos)source.ToMPos(self.World.Map);
+				var dstUv = (PPos)destination.ToMPos(self.World.Map);
+				if (visibleRegion != null && !visibleRegion.Contains(srcUv) && !visibleRegion.Contains(dstUv))
+					continue;
+
+				yield return new TargetLineRenderable(
+				[
 					self.World.Map.CenterOfSubCell(source, SubCell.FullCell) + CustomLayerOffset(source),
 					self.World.Map.CenterOfSubCell(destination, SubCell.FullCell) + CustomLayerOffset(destination),
-				}, destination.Layer == 0 ? color : customColor, edgeSize, nodeSize);
+				], destination.Layer == 0 ? color : customColor, edgeSize, nodeSize);
+			}
 		}
 
-		static IEnumerable<IRenderable> RenderCosts(Actor self, Record edges, WVec textOffset, SpriteFont font, Color color)
+		static IEnumerable<IRenderable> RenderCosts(Actor self, Record edges, WVec textOffset, SpriteFont font, Color color, ProjectedCellRegion visibleRegion)
 		{
 			if (edges == null)
 				yield break;
@@ -213,6 +227,10 @@ namespace OpenRA.Mods.Common.Traits
 			var customColor = CustomLayerColor(color);
 			foreach (var (_, destination, costSoFar, estimatedRemainingCost) in edges)
 			{
+				var dstUv = (PPos)destination.ToMPos(self.World.Map);
+				if (!visibleRegion.Contains(dstUv))
+					continue;
+
 				var centerPos = self.World.Map.CenterOfSubCell(destination, SubCell.FullCell) +
 					CustomLayerOffset(destination) + textOffset;
 				yield return new TextAnnotationRenderable(font, centerPos, 0,

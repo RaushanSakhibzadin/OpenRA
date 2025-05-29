@@ -39,7 +39,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Speech notification to play when the crate is collected.")]
 		public readonly string Notification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		[Desc("Text notification to display when the crate is collected.")]
 		public readonly string TextNotification = null;
 
@@ -47,11 +47,11 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int TimeDelay = 0;
 
 		[Desc("Only allow this crate action when the collector has these prerequisites")]
-		public readonly string[] Prerequisites = Array.Empty<string>();
+		public readonly string[] Prerequisites = [];
 
 		[ActorReference]
 		[Desc("Actor types that this crate action will not occur for.")]
-		public readonly string[] ExcludedActorTypes = Array.Empty<string>();
+		public readonly string[] ExcludedActorTypes = [];
 
 		public override object Create(ActorInitializer init) { return new CrateAction(init.Self, this); }
 	}

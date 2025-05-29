@@ -62,7 +62,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				var maps = new List<(IReadWritePackage Package, string Map)>();
 				if (args.Length < 2)
 				{
-					Console.WriteLine($"Testing mod: {modData.Manifest.Metadata.Title}");
+					Console.WriteLine($"Testing mod: {modData.Manifest.Metadata.TitleTranslated}");
 
 					// Run all rule checks on the default mod rules.
 					CheckRules(modData, modData.DefaultRules);
@@ -100,8 +100,15 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					if (package == null)
 						continue;
 
-					using (var testMap = new Map(modData, package))
-						TestMap(testMap, modData);
+					try
+					{
+						using (var testMap = new Map(modData, package))
+							TestMap(testMap, modData);
+					}
+					catch (Exception e)
+					{
+						EmitError($"Failed to load map {map.Map} with exception: {e}");
+					}
 				}
 
 				if (errors > 0)

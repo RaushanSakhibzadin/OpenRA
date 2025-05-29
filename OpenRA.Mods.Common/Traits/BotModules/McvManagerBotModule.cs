@@ -20,13 +20,13 @@ namespace OpenRA.Mods.Common.Traits
 	public class McvManagerBotModuleInfo : ConditionalTraitInfo
 	{
 		[Desc("Actor types that are considered MCVs (deploy into base builders).")]
-		public readonly HashSet<string> McvTypes = new();
+		public readonly HashSet<string> McvTypes = [];
 
 		[Desc("Actor types that are considered construction yards (base builders).")]
-		public readonly HashSet<string> ConstructionYardTypes = new();
+		public readonly HashSet<string> ConstructionYardTypes = [];
 
 		[Desc("Actor types that are able to produce MCVs.")]
-		public readonly HashSet<string> McvFactoryTypes = new();
+		public readonly HashSet<string> McvFactoryTypes = [];
 
 		[Desc("Try to maintain at least this many ConstructionYardTypes, build an MCV if number is below this.")]
 		public readonly int MinimumConstructionYardCount = 1;
@@ -60,9 +60,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		readonly World world;
 		readonly Player player;
-		readonly ActorIndex.OwnerAndNamesAndTrait<Transforms> mcvs;
-		readonly ActorIndex.OwnerAndNamesAndTrait<Building> constructionYards;
-		readonly ActorIndex.OwnerAndNamesAndTrait<Building> mcvFactories;
+		readonly ActorIndex.OwnerAndNamesAndTrait<TransformsInfo> mcvs;
+		readonly ActorIndex.OwnerAndNamesAndTrait<BuildingInfo> constructionYards;
+		readonly ActorIndex.OwnerAndNamesAndTrait<BuildingInfo> mcvFactories;
 
 		IBotPositionsUpdated[] notifyPositionsUpdated;
 		IBotRequestUnitProduction[] requestUnitProduction;
@@ -76,9 +76,9 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			world = self.World;
 			player = self.Owner;
-			mcvs = new ActorIndex.OwnerAndNamesAndTrait<Transforms>(world, info.McvTypes, player);
-			constructionYards = new ActorIndex.OwnerAndNamesAndTrait<Building>(world, info.ConstructionYardTypes, player);
-			mcvFactories = new ActorIndex.OwnerAndNamesAndTrait<Building>(world, info.McvFactoryTypes, player);
+			mcvs = new ActorIndex.OwnerAndNamesAndTrait<TransformsInfo>(world, info.McvTypes, player);
+			constructionYards = new ActorIndex.OwnerAndNamesAndTrait<BuildingInfo>(world, info.ConstructionYardTypes, player);
+			mcvFactories = new ActorIndex.OwnerAndNamesAndTrait<BuildingInfo>(world, info.McvFactoryTypes, player);
 		}
 
 		protected override void Created(Actor self)
@@ -211,10 +211,10 @@ namespace OpenRA.Mods.Common.Traits
 			if (IsTraitDisabled)
 				return null;
 
-			return new List<MiniYamlNode>()
-			{
+			return
+			[
 				new("InitialBaseCenter", FieldSaver.FormatValue(initialBaseCenter))
-			};
+			];
 		}
 
 		void IGameSaveTraitData.ResolveTraitData(Actor self, MiniYaml data)

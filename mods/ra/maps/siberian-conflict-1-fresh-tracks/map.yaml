@@ -49,6 +49,7 @@ Players:
 		Enemies: USSR
 	PlayerReference@USSR:
 		Name: USSR
+		Bot: campaign
 		Faction: soviet
 		Color: FF1400
 		Enemies: Allies, England
@@ -671,4 +672,4 @@ Actors:
 
 Rules: ra|rules/campaign-rules.yaml, ra|rules/campaign-tooltips.yaml, ra|rules/campaign-palettes.yaml, rules.yaml
 
-Translations: ra|languages/lua/en.ftl, ra|languages/campaign/en.ftl
+FluentMessages: ra|fluent/lua.ftl, ra|fluent/campaign.ftl

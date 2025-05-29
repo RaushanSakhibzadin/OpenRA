@@ -22,19 +22,19 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 	sealed class GameInfoLogic : ChromeLogic
 	{
-		[TranslationReference]
+		[FluentReference]
 		const string Objectives = "menu-game-info.objectives";
 
-		[TranslationReference]
+		[FluentReference]
 		const string Briefing = "menu-game-info.briefing";
 
-		[TranslationReference]
+		[FluentReference]
 		const string Options = "menu-game-info.options";
 
-		[TranslationReference]
+		[FluentReference]
 		const string Debug = "menu-game-info.debug";
 
-		[TranslationReference]
+		[FluentReference]
 		const string Chat = "menu-game-info.chat";
 
 		readonly World world;
@@ -108,7 +108,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 				if (tabButton != null)
 				{
-					var tabButtonText = TranslationProvider.GetString(label);
+					var tabButtonText = FluentProvider.GetMessage(label);
 					tabButton.GetText = () => tabButtonText;
 					tabButton.OnClick = () =>
 					{
@@ -150,15 +150,15 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		void SetupMapPanel(ButtonWidget mapTabButton, Widget mapPanelContainer)
 		{
-			Game.LoadWidget(world, "MAP_PANEL", mapPanelContainer, new WidgetArgs());
+			Game.LoadWidget(world, "MAP_PANEL", mapPanelContainer, []);
 		}
 
 		void SetupLobbyOptionsPanel(ButtonWidget mapTabButton, Widget optionsPanelContainer)
 		{
 			Game.LoadWidget(world, "LOBBY_OPTIONS_PANEL", optionsPanelContainer, new WidgetArgs()
 			{
-				{ "getMap", (Func<MapPreview>)(() => modData.MapCache[world.Map.Uid]) },
-				{ "configurationDisabled", (Func<bool>)(() => true) }
+				{ "getMap", () => modData.MapCache[world.Map.Uid] },
+				{ "configurationDisabled", () => true }
 			});
 		}
 
@@ -167,7 +167,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			if (debugTabButton != null)
 				debugTabButton.IsDisabled = () => world.IsGameOver;
 
-			Game.LoadWidget(world, "DEBUG_PANEL", debugPanelContainer, new WidgetArgs());
+			Game.LoadWidget(world, "DEBUG_PANEL", debugPanelContainer, []);
 
 			if (activePanel == IngameInfoPanel.AutoSelect)
 				activePanel = IngameInfoPanel.Debug;

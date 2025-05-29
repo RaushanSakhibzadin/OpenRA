@@ -33,6 +33,7 @@ Players:
 		Enemies: USSR
 	PlayerReference@GoodGuy:
 		Name: GoodGuy
+		Bot: campaign
 		Faction: allies
 		Color: E2E6F6
 		Allies: Greece
@@ -954,4 +955,4 @@ Actors:
 
 Rules: ra|rules/campaign-rules.yaml, ra|rules/campaign-tooltips.yaml, ra|rules/campaign-palettes.yaml, rules.yaml
 
-Translations: ra|languages/lua/en.ftl, ra|languages/campaign/en.ftl
+FluentMessages: ra|fluent/lua.ftl, ra|fluent/campaign.ftl

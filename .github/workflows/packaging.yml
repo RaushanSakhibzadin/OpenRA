@@ -42,10 +42,10 @@ jobs:
       - name: Clone Repository
         uses: actions/checkout@v4
 
-      - name: Install .NET 6.0
+      - name: Install .NET 8.0
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '8.0.x'
 
       - name: Prepare Environment
         run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
@@ -53,29 +53,27 @@ jobs:
       - name: Package AppImages
         run: |
           mkdir -p build/linux
-          sudo apt install libfuse2
+          sudo apt-get install -y desktop-file-utils
           ./packaging/linux/buildpackage.sh "${GIT_TAG}" "${PWD}/build/linux"
 
       - name: Upload Packages
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref }}
-          overwrite: true
-          file_glob: true
-          file: build/linux/*
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release upload ${{ github.ref_name }} build/linux/*
 
   macos:
     name: macOS Disk Image
-    runs-on: macos-11
+    runs-on: macos-13
     steps:
       - name: Clone Repository
         uses: actions/checkout@v4
 
-      - name: Install .NET 6.0
+      - name: Install .NET 8.0
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '8.0.x'
 
       - name: Prepare Environment
         run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
@@ -92,13 +90,11 @@ jobs:
           ./packaging/macos/buildpackage.sh "${GIT_TAG}" "${PWD}/build/macos"
 
       - name: Upload Package
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref }}
-          overwrite: true
-          file_glob: true
-          file: build/macos/*
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release upload ${{ github.ref_name }} build/macos/*
 
   windows:
     name: Windows Installers
@@ -107,10 +103,10 @@ jobs:
       - name: Clone Repository
         uses: actions/checkout@v4
 
-      - name: Install .NET 6.0
+      - name: Install .NET 8.0
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '8.0.x'
 
       - name: Prepare Environment
         run: |
@@ -124,10 +120,8 @@ jobs:
           ./packaging/windows/buildpackage.sh "${GIT_TAG}" "${PWD}/build/windows"
 
       - name: Upload Packages
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref }}
-          overwrite: true
-          file_glob: true
-          file: build/windows/*
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release upload ${{ github.ref_name }} build/windows/*

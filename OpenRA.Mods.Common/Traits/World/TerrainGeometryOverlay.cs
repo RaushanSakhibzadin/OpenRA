@@ -19,6 +19,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[TraitLocation(SystemActors.World | SystemActors.EditorWorld)]
+	[IncludeStaticFluentReferences(typeof(TerrainGeometryOverlay))]
 	[Desc("Renders a debug overlay showing the terrain cells. Attach this to the world actor.")]
 	public class TerrainGeometryOverlayInfo : TraitInfo<TerrainGeometryOverlay> { }
 
@@ -26,7 +27,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		const string CommandName = "terrain-geometry";
 
-		[TranslationReference]
+		[FluentReference]
 		const string CommandDescription = "description-terrain-geometry-overlay";
 
 		public bool Enabled;

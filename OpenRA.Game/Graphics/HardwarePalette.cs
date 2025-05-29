@@ -21,11 +21,11 @@ namespace OpenRA.Graphics
 		public ITexture ColorShifts { get; }
 
 		public int Height { get; private set; }
-		readonly Dictionary<string, ImmutablePalette> palettes = new();
-		readonly Dictionary<string, MutablePalette> mutablePalettes = new();
-		readonly Dictionary<string, int> indices = new();
-		byte[] buffer = Array.Empty<byte>();
-		float[] colorShiftBuffer = Array.Empty<float>();
+		readonly Dictionary<string, ImmutablePalette> palettes = [];
+		readonly Dictionary<string, MutablePalette> mutablePalettes = [];
+		readonly Dictionary<string, int> indices = [];
+		byte[] buffer = [];
+		float[] colorShiftBuffer = [];
 
 		public HardwarePalette()
 		{
@@ -85,7 +85,10 @@ namespace OpenRA.Graphics
 		public void ReplacePalette(string name, IPalette p)
 		{
 			if (mutablePalettes.ContainsKey(name))
+			{
+				palettes[name] = new ImmutablePalette(p);
 				CopyPaletteToBuffer(indices[name], mutablePalettes[name] = new MutablePalette(p));
+			}
 			else if (palettes.ContainsKey(name))
 				CopyPaletteToBuffer(indices[name], palettes[name] = new ImmutablePalette(p));
 			else

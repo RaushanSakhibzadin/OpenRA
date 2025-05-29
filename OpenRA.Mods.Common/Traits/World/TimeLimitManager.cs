@@ -12,25 +12,27 @@
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Mods.Common.Widgets;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Traits
 {
 	[TraitLocation(SystemActors.World)]
+	[IncludeStaticFluentReferences(typeof(TimeLimitManager))]
 	[Desc("This trait allows setting a time limit on matches. Attach this to the World actor.")]
 	public class TimeLimitManagerInfo : TraitInfo, ILobbyOptions, IRulesetLoaded
 	{
-		[TranslationReference]
+		[FluentReference]
 		[Desc("Label that will be shown for the time limit option in the lobby.")]
 		public readonly string TimeLimitLabel = "dropdown-time-limit.label";
 
-		[TranslationReference]
+		[FluentReference]
 		[Desc("Tooltip description that will be shown for the time limit option in the lobby.")]
 		public readonly string TimeLimitDescription = "dropdown-time-limit.description";
 
 		[Desc("Time Limit options that will be shown in the lobby dropdown. Values are in minutes.")]
-		public readonly int[] TimeLimitOptions = { 0, 10, 20, 30, 40, 60, 90 };
+		public readonly int[] TimeLimitOptions = [0, 10, 20, 30, 40, 60, 90];
 
 		[Desc("List of remaining minutes of game time when a text and optional speech notification should be made to players.")]
 		public readonly Dictionary<int, string> TimeLimitWarnings = new()
@@ -76,10 +78,10 @@ namespace OpenRA.Mods.Common.Traits
 				throw new YamlException("TimeLimitDefault must be a value from TimeLimitOptions");
 		}
 
-		[TranslationReference]
+		[FluentReference]
 		const string NoTimeLimit = "options-time-limit.no-limit";
 
-		[TranslationReference("minutes")]
+		[FluentReference("minutes")]
 		const string TimeLimitOption = "options-time-limit.options";
 
 		IEnumerable<LobbyOption> ILobbyOptions.LobbyOptions(MapPreview map)
@@ -87,9 +89,9 @@ namespace OpenRA.Mods.Common.Traits
 			var timelimits = TimeLimitOptions.ToDictionary(m => m.ToStringInvariant(), m =>
 			{
 				if (m == 0)
-					return TranslationProvider.GetString(NoTimeLimit);
+					return FluentProvider.GetMessage(NoTimeLimit);
 				else
-					return TranslationProvider.GetString(TimeLimitOption, Translation.Arguments("minutes", m));
+					return FluentProvider.GetMessage(TimeLimitOption, "minutes", m);
 			});
 
 			yield return new LobbyOption(map, "timelimit", TimeLimitLabel, TimeLimitDescription, TimeLimitDropdownVisible, TimeLimitDisplayOrder,
@@ -101,7 +103,7 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class TimeLimitManager : INotifyTimeLimit, ITick, IWorldLoaded
 	{
-		[TranslationReference]
+		[FluentReference]
 		const string TimeLimitExpired = "notification-time-limit-expired";
 
 		readonly TimeLimitManagerInfo info;
@@ -181,7 +183,7 @@ namespace OpenRA.Mods.Common.Traits
 				countdownLabel.GetText = () => null;
 
 			if (!info.SkipTimerExpiredNotification)
-				TextNotificationsManager.AddSystemLine(TranslationProvider.GetString(TimeLimitExpired));
+				TextNotificationsManager.AddSystemLine(FluentProvider.GetMessage(TimeLimitExpired));
 		}
 	}
 }

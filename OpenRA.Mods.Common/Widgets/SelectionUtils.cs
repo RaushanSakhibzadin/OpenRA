@@ -20,18 +20,21 @@ namespace OpenRA.Mods.Common.Widgets
 {
 	public static class SelectionUtils
 	{
-		public static IEnumerable<Actor> SelectActorsOnScreen(World world, WorldRenderer wr, IEnumerable<string> selectionClasses, IEnumerable<Player> players)
+		public static IEnumerable<Actor> SelectActorsOnScreen(
+			World world, WorldRenderer wr, IEnumerable<string> selectionClasses, IEnumerable<Player> players)
 		{
 			var actors = world.ScreenMap.ActorsInMouseBox(wr.Viewport.TopLeft, wr.Viewport.BottomRight).Select(a => a.Actor);
 			return SelectActorsByOwnerAndSelectionClass(actors, players, selectionClasses);
 		}
 
-		public static IEnumerable<Actor> SelectActorsInWorld(World world, IEnumerable<string> selectionClasses, IEnumerable<Player> players)
+		public static IEnumerable<Actor> SelectActorsInWorld(
+			World world, IEnumerable<string> selectionClasses, IEnumerable<Player> players)
 		{
 			return SelectActorsByOwnerAndSelectionClass(world.Actors.Where(a => a.IsInWorld), players, selectionClasses);
 		}
 
-		public static IEnumerable<Actor> SelectActorsByOwnerAndSelectionClass(IEnumerable<Actor> actors, IEnumerable<Player> owners, IEnumerable<string> selectionClasses)
+		public static IEnumerable<Actor> SelectActorsByOwnerAndSelectionClass(
+			IEnumerable<Actor> actors, IEnumerable<Player> owners, IEnumerable<string> selectionClasses)
 		{
 			return actors.Where(a =>
 			{
@@ -77,7 +80,7 @@ namespace OpenRA.Mods.Common.Widgets
 			var isShroudDisabled = viewer == null || (world.RenderPlayer == null && world.LocalPlayer.Spectating);
 			var isEveryone = viewer != null && viewer.NonCombatant && viewer.Spectating;
 
-			return isShroudDisabled || isEveryone ? world.Players : new[] { viewer };
+			return isShroudDisabled || isEveryone ? world.Players : [viewer];
 		}
 	}
 }

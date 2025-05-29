@@ -19,31 +19,18 @@ using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
 {
+	[IncludeStaticFluentReferences(typeof(AddActorAction), typeof(CommonSelectorLogic))]
 	public class ActorSelectorLogic : CommonSelectorLogic
 	{
-		[TranslationReference("actorType")]
+		[FluentReference("actorType")]
 		const string ActorTypeTooltip = "label-actor-type";
 
-		sealed class ActorSelectorActor
-		{
-			public readonly ActorInfo Actor;
-			public readonly string[] Categories;
-			public readonly string[] SearchTerms;
-			public readonly string Tooltip;
-
-			public ActorSelectorActor(ActorInfo actor, string[] categories, string[] searchTerms, string tooltip)
-			{
-				Actor = actor;
-				Categories = categories;
-				SearchTerms = searchTerms;
-				Tooltip = tooltip;
-			}
-		}
+		sealed record ActorSelectorActor(ActorInfo Actor, string[] Categories, string[] SearchTerms, string Tooltip);
 
 		readonly DropDownButtonWidget ownersDropDown;
 		readonly Ruleset mapRules;
 		readonly ActorSelectorActor[] allActors;
-		readonly EditorCursorLayer editorCursor;
+		readonly EditorViewportControllerWidget editor;
 
 		PlayerReference selectedOwner;
 
@@ -53,7 +40,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			mapRules = world.Map.Rules;
 			ownersDropDown = widget.Get<DropDownButtonWidget>("OWNERS_DROPDOWN");
-			editorCursor = world.WorldActor.Trait<EditorCursorLayer>();
+			editor = widget.Parent.Parent.Get<EditorViewportControllerWidget>("MAP_EDITOR");
 			var editorLayer = world.WorldActor.Trait<EditorActorLayer>();
 
 			selectedOwner = editorLayer.Players.Players.Values.First();
@@ -112,12 +99,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				var tooltip = a.TraitInfos<EditorOnlyTooltipInfo>().FirstOrDefault(ti => ti.EnabledByDefault) as TooltipInfoBase
 					?? a.TraitInfos<TooltipInfo>().FirstOrDefault(ti => ti.EnabledByDefault);
 
-				var actorType = TranslationProvider.GetString(ActorTypeTooltip, Translation.Arguments("actorType", a.Name));
+				var actorType = FluentProvider.GetMessage(ActorTypeTooltip, "actorType", a.Name);
 
 				var searchTerms = new List<string>() { a.Name };
 				if (tooltip != null)
 				{
-					var actorName = TranslationProvider.GetString(tooltip.Name);
+					var actorName = FluentProvider.GetMessage(tooltip.Name);
 					searchTerms.Add(actorName);
 					allActorsTemp.Add(new ActorSelectorActor(a, editorData.Categories, searchTerms.ToArray(), actorName + $"\n{actorType}"));
 				}
@@ -129,7 +116,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			allCategories = allActors.SelectMany(ac => ac.Categories)
 				.Distinct()
-				.OrderBy(x => x)
+				.Order()
 				.ToArray();
 
 			foreach (var c in allCategories)
@@ -149,7 +136,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 							s => s.Contains(searchFilter, StringComparison.CurrentCultureIgnoreCase)))
 						.SelectMany(t => t.Categories)
 						.Distinct()
-						.OrderBy(x => x));
+						.Order());
 				else
 					FilteredCategories.AddRange(allCategories);
 
@@ -167,9 +154,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			ownersDropDown.TextColor = option.Color;
 			InitializePreviews();
 
-			var actor = editorCursor.Actor;
-			if (actor != null)
+			if (editor.CurrentBrush is EditorActorBrush brush)
 			{
+				var actor = brush.Preview;
 				actor.Owner = option;
 				actor.ReplaceInit(new OwnerInit(option.Name));
 				actor.ReplaceInit(new FactionInit(option.Faction));
@@ -204,7 +191,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				try
 				{
 					var item = ScrollItemWidget.Setup(ItemTemplate,
-						() => editorCursor.Type == EditorCursorType.Actor && editorCursor.Actor.Info == actor,
+						() => Editor.CurrentBrush is EditorActorBrush eab && eab.Preview.Info == actor,
 						() => Editor.SetBrush(new EditorActorBrush(Editor, actor, selectedOwner, WorldRenderer)));
 
 					var preview = item.Get<ActorPreviewWidget>("ACTOR_PREVIEW");

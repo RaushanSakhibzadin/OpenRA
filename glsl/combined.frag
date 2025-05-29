@@ -17,7 +17,7 @@ uniform sampler2D ColorShifts;
 uniform bool EnableDepthPreview;
 uniform vec2 DepthPreviewParams;
 uniform float DepthTextureScale;
-uniform float AntialiasPixelsPerTexel;
+uniform bool EnablePixelArtScaling;
 
 in vec4 vTexCoord;
 flat in float vTexPalette;
@@ -51,7 +51,7 @@ vec3 hsv2rgb(vec3 c)
 
 float srgb2linear(float c)
 {
-	// Standard gamma conversion equation: see e.g. http://entropymine.com/imageworsener/srgbformula/
+	// Standard gamma conversion equation: see e.g. https://entropymine.com/imageworsener/srgbformula/
 	return c <= 0.04045f ? c / 12.92f : pow((c + 0.055f) / 1.055f, 2.4f);
 }
 
@@ -63,7 +63,7 @@ vec4 srgb2linear(vec4 c)
 
 float linear2srgb(float c)
 {
-	// Standard gamma conversion equation: see e.g. http://entropymine.com/imageworsener/srgbformula/
+	// Standard gamma conversion equation: see e.g. https://entropymine.com/imageworsener/srgbformula/
 	return c <= 0.0031308 ? c * 12.92f : 1.055f * pow(c, 1.0f / 2.4f) - 0.055f;
 }
 
@@ -73,26 +73,26 @@ vec4 linear2srgb(vec4 c)
 	return c.a * vec4(linear2srgb(c.r / c.a), linear2srgb(c.g / c.a), linear2srgb(c.b / c.a), 1.0f);
 }
 
-ivec2 Size(uint samplerIndex)
+vec2 Size(uint samplerIndex)
 {
 	switch (samplerIndex)
 	{
 		case 7u:
-			return textureSize(Texture7, 0);
+			return vec2(textureSize(Texture7, 0));
 		case 6u:
-			return textureSize(Texture6, 0);
+			return vec2(textureSize(Texture6, 0));
 		case 5u:
-			return textureSize(Texture5, 0);
+			return vec2(textureSize(Texture5, 0));
 		case 4u:
-			return textureSize(Texture4, 0);
+			return vec2(textureSize(Texture4, 0));
 		case 3u:
-			return textureSize(Texture3, 0);
+			return vec2(textureSize(Texture3, 0));
 		case 2u:
-			return textureSize(Texture2, 0);
+			return vec2(textureSize(Texture2, 0));
 		case 1u:
-			return textureSize(Texture1, 0);
+			return vec2(textureSize(Texture1, 0));
 		default:
-			return textureSize(Texture0, 0);
+			return vec2(textureSize(Texture0, 0));
 	}
 }
 
@@ -158,24 +158,26 @@ void main()
 	bool isColor = vChannelType == 0u;
 
 	vec4 c;
-	if (AntialiasPixelsPerTexel > 0.0)
+	if (EnablePixelArtScaling)
 	{
-		vec2 textureSize = vec2(Size(vChannelSampler));
-		vec2 offset = fract(coords.st * textureSize);
+		vec2 textureSize = Size(vChannelSampler);
+		vec2 vUv = coords.st * textureSize;
+		vec2 offset = fract(vUv);
+		vec2 pixelsPerTexel = vec2(1.0 / dFdx(vUv.x), 1.0 / dFdy(vUv.y));
 
 		// Offset the sampling point to simulate bilinear intepolation in window coordinates instead of texture coordinates
 		// https://csantosbh.wordpress.com/2014/01/25/manual-texture-filtering-for-pixelated-games-in-webgl/
 		// https://csantosbh.wordpress.com/2014/02/05/automatically-detecting-the-texture-filter-threshold-for-pixelated-magnifications/
 		// ik is defined as 1/k from the articles, set to 1/0.7 because it looks good
 		float ik = 1.43;
-		vec2 interp = clamp(offset * ik * AntialiasPixelsPerTexel, 0.0, .5) + clamp((offset - 1.0) * ik * AntialiasPixelsPerTexel + .5, 0.0, .5);
+		vec2 interp = clamp(offset * ik * pixelsPerTexel, 0.0, .5) + clamp((offset - 1.0) * ik * pixelsPerTexel + .5, 0.0, .5);
 		coords = (floor(coords.st * textureSize) + interp) / textureSize;
 
 		if (isPaletted)
 			c = SamplePalettedBilinear(vChannelSampler, coords, textureSize);
 	}
 
-	if (!(AntialiasPixelsPerTexel > 0.0 && isPaletted))
+	if (!(EnablePixelArtScaling && isPaletted))
 	{
 		vec4 x = Sample(vChannelSampler, coords);
 		vec2 p = vec2(dot(x, vChannelMask), vTexPalette);

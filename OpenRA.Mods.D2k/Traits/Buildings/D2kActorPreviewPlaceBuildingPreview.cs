@@ -9,13 +9,11 @@
  */
 #endregion
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Mods.Common.Traits;
-using OpenRA.Mods.Common.Widgets;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
@@ -25,10 +23,10 @@ namespace OpenRA.Mods.D2k.Traits
 	public class D2kActorPreviewPlaceBuildingPreviewInfo : ActorPreviewPlaceBuildingPreviewInfo
 	{
 		[Desc("Terrain types that should show the 'unsafe' footprint tile.")]
-		public readonly HashSet<string> UnsafeTerrainTypes = new() { "Rock" };
+		public readonly HashSet<string> UnsafeTerrainTypes = ["Rock"];
 
 		[Desc("Only check for 'unsafe' footprint tiles when you have these prerequisites.")]
-		public readonly string[] RequiresPrerequisites = Array.Empty<string>();
+		public readonly string[] RequiresPrerequisites = [];
 
 		[Desc("Sprite image to use for the overlay.")]
 		public readonly string Image = "overlay";
@@ -105,7 +103,12 @@ namespace OpenRA.Mods.D2k.Traits
 				if ((c.Value & filter) == 0)
 					continue;
 
-				var isUnsafe = checkUnsafeTiles && wr.World.Map.Contains(c.Key) && candidateSafeTiles.Contains(c.Key) && info.UnsafeTerrainTypes.Contains(wr.World.Map.GetTerrainInfo(c.Key).Type);
+				var isUnsafe =
+					checkUnsafeTiles &&
+					wr.World.Map.Contains(c.Key) &&
+					candidateSafeTiles.Contains(c.Key) &&
+					info.UnsafeTerrainTypes.Contains(wr.World.Map.GetTerrainInfo(c.Key).Type);
+
 				var tile = (c.Value & PlaceBuildingCellType.Invalid) != 0 ? blockedTile : isUnsafe ? unsafeTile : validTile;
 				var sequenceAlpha = (c.Value & PlaceBuildingCellType.Invalid) != 0 ? blockedAlpha : isUnsafe ? unsafeAlpha : validAlpha;
 

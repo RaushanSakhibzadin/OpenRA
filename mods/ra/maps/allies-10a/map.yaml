@@ -26,12 +26,14 @@ Players:
 		Faction: allies
 	PlayerReference@USSR:
 		Name: USSR
+		Bot: campaign
 		Faction: soviet
 		Color: FF1400
 		Allies: BadGuy
 		Enemies: Greece
 	PlayerReference@BadGuy:
 		Name: BadGuy
+		Bot: campaign
 		Faction: soviet
 		Color: FF1400
 		Allies: USSR
@@ -1612,9 +1614,18 @@ Actors:
 	OreAmbushEntry: waypoint
 		Location: 26,48
 		Owner: Neutral
+	Actor476: fenc
+		Owner: USSR
+		Location: 78,76
+	Actor477: fenc
+		Owner: USSR
+		Location: 78,75
+	Actor478: fenc
+		Owner: USSR
+		Location: 79,75
 
 Rules: ra|rules/campaign-rules.yaml, ra|rules/campaign-tooltips.yaml, ra|rules/campaign-palettes.yaml, rules.yaml
 
 Weapons: weapons.yaml
 
-Translations: ra|languages/lua/en.ftl, ra|languages/campaign/en.ftl
+FluentMessages: ra|fluent/lua.ftl, ra|fluent/campaign.ftl

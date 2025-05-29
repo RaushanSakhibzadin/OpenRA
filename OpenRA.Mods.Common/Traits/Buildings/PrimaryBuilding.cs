@@ -37,13 +37,13 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Speech notification to play when selecting a primary building.")]
 		public readonly string SelectionNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		[Desc("Text notification to display when selecting a primary building.")]
 		public readonly string SelectionTextNotification = null;
 
 		[Desc("List of production queues for which the primary flag should be set.",
 			"If empty, the list given in the `Produces` property of the `" + nameof(Production) + "` trait will be used.")]
-		public readonly string[] ProductionQueues = Array.Empty<string>();
+		public readonly string[] ProductionQueues = [];
 
 		[CursorReference]
 		[Desc("Cursor to display when setting the primary building.")]

@@ -38,7 +38,7 @@ namespace OpenRA.Mods.Common.Traits
 
 	sealed class GivesBounty : ConditionalTrait<GivesBountyInfo>, INotifyKilled, INotifyPassengerEntered, INotifyPassengerExited
 	{
-		readonly Dictionary<Actor, GivesBounty[]> passengerBounties = new();
+		readonly Dictionary<Actor, GivesBounty[]> passengerBounties = [];
 
 		public GivesBounty(GivesBountyInfo info)
 			: base(info) { }
@@ -72,7 +72,8 @@ namespace OpenRA.Mods.Common.Traits
 
 			var displayedBounty = GetDisplayedBountyValue(self);
 			if (Info.ShowBounty && self.IsInWorld && displayedBounty != 0 && e.Attacker.Owner.IsAlliedWith(self.World.RenderPlayer))
-				e.Attacker.World.AddFrameEndTask(w => w.Add(new FloatingText(self.CenterPosition, e.Attacker.Owner.Color, FloatingText.FormatCashTick(displayedBounty), 30)));
+				e.Attacker.World.AddFrameEndTask(
+					w => w.Add(new FloatingText(self.CenterPosition, e.Attacker.OwnerColor(), FloatingText.FormatCashTick(displayedBounty), 30)));
 
 			e.Attacker.Owner.PlayerActor.Trait<PlayerResources>().ChangeCash(GetBountyValue(self));
 		}

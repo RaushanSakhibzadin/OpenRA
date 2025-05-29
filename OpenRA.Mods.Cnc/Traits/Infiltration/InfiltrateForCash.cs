@@ -43,7 +43,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Sound the victim will hear when they get robbed.")]
 		public readonly string InfiltratedNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		[Desc("Text notification the victim will see when they get robbed.")]
 		public readonly string InfiltratedTextNotification = null;
 
@@ -51,7 +51,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Sound the perpetrator will hear after successful infiltration.")]
 		public readonly string InfiltrationNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		[Desc("Text notification the perpetrator will see after successful infiltration.")]
 		public readonly string InfiltrationTextNotification = null;
 
@@ -94,7 +94,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			TextNotificationsManager.AddTransientLine(infiltrator.Owner, info.InfiltrationTextNotification);
 
 			if (info.ShowTicks)
-				self.World.AddFrameEndTask(w => w.Add(new FloatingText(self.CenterPosition, infiltrator.Owner.Color, FloatingText.FormatCashTick(toGive), 30)));
+				self.World.AddFrameEndTask(w => w.Add(new FloatingText(self.CenterPosition, infiltrator.OwnerColor(), FloatingText.FormatCashTick(toGive), 30)));
 		}
 	}
 }

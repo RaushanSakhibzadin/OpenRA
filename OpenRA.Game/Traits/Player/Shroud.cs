@@ -18,11 +18,11 @@ namespace OpenRA.Traits
 	[Desc("Required for shroud and fog visibility checks. Add this to the player actor.")]
 	public class ShroudInfo : TraitInfo, ILobbyOptions
 	{
-		[TranslationReference]
+		[FluentReference]
 		[Desc("Descriptive label for the fog checkbox in the lobby.")]
 		public readonly string FogCheckboxLabel = "checkbox-fog-of-war.label";
 
-		[TranslationReference]
+		[FluentReference]
 		[Desc("Tooltip description for the fog checkbox in the lobby.")]
 		public readonly string FogCheckboxDescription = "checkbox-fog-of-war.description";
 
@@ -38,11 +38,11 @@ namespace OpenRA.Traits
 		[Desc("Display order for the fog checkbox in the lobby.")]
 		public readonly int FogCheckboxDisplayOrder = 0;
 
-		[TranslationReference]
+		[FluentReference]
 		[Desc("Descriptive label for the explored map checkbox in the lobby.")]
 		public readonly string ExploredMapCheckboxLabel = "checkbox-explored-map.label";
 
-		[TranslationReference]
+		[FluentReference]
 		[Desc("Tooltip description for the explored map checkbox in the lobby.")]
 		public readonly string ExploredMapCheckboxDescription = "checkbox-explored-map.description";
 
@@ -76,17 +76,7 @@ namespace OpenRA.Traits
 		public int RevealedCells { get; private set; }
 
 		enum ShroudCellType : byte { Shroud, Fog, Visible }
-		sealed class ShroudSource
-		{
-			public readonly SourceType Type;
-			public readonly PPos[] ProjectedCells;
-
-			public ShroudSource(SourceType type, PPos[] projectedCells)
-			{
-				Type = type;
-				ProjectedCells = projectedCells;
-			}
-		}
+		readonly record struct ShroudSource(SourceType Type, PPos[] ProjectedCells);
 
 		// Visible is not a super set of Explored. IsExplored may return false even if IsVisible returns true.
 		[Flags]
@@ -96,7 +86,7 @@ namespace OpenRA.Traits
 		readonly Map map;
 
 		// Individual shroud modifier sources (type and area)
-		readonly Dictionary<object, ShroudSource> sources = new();
+		readonly Dictionary<object, ShroudSource> sources = [];
 
 		// Per-cell count of each source type, used to resolve the final cell type
 		readonly ProjectedCellLayer<short> passiveVisibleCount;
@@ -159,7 +149,7 @@ namespace OpenRA.Traits
 
 			ExploreMapEnabled = gs.OptionOrDefault("explored", info.ExploredMapCheckboxEnabled);
 			if (ExploreMapEnabled)
-				self.World.AddFrameEndTask(w => ExploreAll());
+				ExploreAll();
 
 			if (!fogEnabled && ExploreMapEnabled)
 				RevealedCells = map.ProjectedCells.Length;

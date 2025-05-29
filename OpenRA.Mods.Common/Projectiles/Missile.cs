@@ -29,7 +29,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		[SequenceReference(nameof(Image), allowNullImage: true)]
 		[Desc("Loop a randomly chosen sequence of Image from this list while this projectile is moving.")]
-		public readonly string[] Sequences = { "idle" };
+		public readonly string[] Sequences = ["idle"];
 
 		[PaletteReference(nameof(IsPlayerPalette))]
 		[Desc("Palette used to render the projectile sequence.")]
@@ -77,7 +77,10 @@ namespace OpenRA.Mods.Common.Projectiles
 		[Desc("The maximum/constant/incremental inaccuracy used in conjunction with the InaccuracyType property.")]
 		public readonly WDist Inaccuracy = WDist.Zero;
 
-		[Desc("Controls the way inaccuracy is calculated. Possible values are 'Maximum' - scale from 0 to max with range, 'PerCellIncrement' - scale from 0 with range and 'Absolute' - use set value regardless of range.")]
+		[Desc("Controls the way inaccuracy is calculated. Possible values are " +
+			"'Maximum' - scale from 0 to max with range, " +
+			"'PerCellIncrement' - scale from 0 with range, " +
+			"'Absolute' - use set value regardless of range.")]
 		public readonly InaccuracyType InaccuracyType = InaccuracyType.Absolute;
 
 		[Desc("Inaccuracy override when successfully locked onto target. Defaults to Inaccuracy if negative.")]
@@ -115,7 +118,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		[SequenceReference(nameof(TrailImage), allowNullImage: true)]
 		[Desc("Loop a randomly chosen sequence of TrailImage from this list while this projectile is moving.")]
-		public readonly string[] TrailSequences = { "idle" };
+		public readonly string[] TrailSequences = ["idle"];
 
 		[PaletteReference(nameof(TrailUsePlayerPalette))]
 		[Desc("Palette used to render the trail sequence.")]
@@ -259,6 +262,9 @@ namespace OpenRA.Mods.Common.Projectiles
 			minLaunchAngle = info.MinimumLaunchAngle;
 			maxLaunchAngle = info.MaximumLaunchAngle;
 
+			// Make sure the projectile on being spawned is approximately looking at the correct direction.
+			renderFacing = args.Facing;
+
 			var world = args.SourceActor.World;
 
 			if (world.SharedRandom.Next(100) <= info.LockOnProbability)
@@ -285,9 +291,14 @@ namespace OpenRA.Mods.Common.Projectiles
 
 			if (info.ContrailLength > 0)
 			{
-				var startcolor = info.ContrailStartColorUsePlayerColor ? Color.FromArgb(info.ContrailStartColorAlpha, args.SourceActor.Owner.Color) : Color.FromArgb(info.ContrailStartColorAlpha, info.ContrailStartColor);
-				var endcolor = info.ContrailEndColorUsePlayerColor ? Color.FromArgb(info.ContrailEndColorAlpha, args.SourceActor.Owner.Color) : Color.FromArgb(info.ContrailEndColorAlpha, info.ContrailEndColor ?? startcolor);
-				contrail = new ContrailRenderable(world, startcolor, endcolor, info.ContrailStartWidth, info.ContrailEndWidth ?? info.ContrailStartWidth, info.ContrailLength, info.ContrailDelay, info.ContrailZOffset);
+				var startcolor = Color.FromArgb(info.ContrailStartColorAlpha, info.ContrailStartColor);
+				var endcolor = Color.FromArgb(info.ContrailEndColorAlpha, info.ContrailEndColor ?? startcolor);
+				contrail = new ContrailRenderable(world, args.SourceActor,
+					startcolor, info.ContrailStartColorUsePlayerColor,
+					endcolor, info.ContrailEndColor == null ? info.ContrailStartColorUsePlayerColor : info.ContrailEndColorUsePlayerColor,
+					info.ContrailStartWidth,
+					info.ContrailEndWidth ?? info.ContrailStartWidth,
+					info.ContrailLength, info.ContrailDelay, info.ContrailZOffset);
 			}
 
 			trailPalette = info.TrailPalette;

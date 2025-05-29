@@ -21,16 +21,19 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		[FieldLoader.Require]
 		[Desc("e.g. Infantry, Vehicles, Aircraft, Buildings")]
-		public readonly string[] Produces = Array.Empty<string>();
+		public readonly string[] Produces = [];
+
+		[Desc("When owner is changed, should the Faction be updated to the new owner's faction?")]
+		public readonly bool UpdateFactionOnOwnerChange = false;
 
 		public override object Create(ActorInitializer init) { return new Production(init, this); }
 	}
 
-	public class Production : PausableConditionalTrait<ProductionInfo>
+	public class Production : PausableConditionalTrait<ProductionInfo>, INotifyOwnerChanged
 	{
 		RallyPoint rp;
 
-		public string Faction { get; }
+		public string Faction { get; private set; }
 
 		public Production(ActorInitializer init, ProductionInfo info)
 			: base(info)
@@ -75,7 +78,7 @@ namespace OpenRA.Mods.Common.Traits
 				else
 					initialFacing = exitinfo.Facing.Value;
 
-				exitLocations = rp != null && rp.Path.Count > 0 ? rp.Path : new List<CPos> { exit };
+				exitLocations = rp != null && rp.Path.Count > 0 ? rp.Path : [exit];
 
 				td.Add(new LocationInit(exit));
 				td.Add(new CenterPositionInit(spawn));
@@ -137,6 +140,12 @@ namespace OpenRA.Mods.Common.Traits
 
 			return mobileInfo == null ||
 				mobileInfo.CanEnterCell(self.World, self, self.Location + s.ExitCell, ignoreActor: self);
+		}
+
+		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		{
+			if (Info.UpdateFactionOnOwnerChange)
+				Faction = self.Owner.Faction.InternalName;
 		}
 	}
 

@@ -22,10 +22,10 @@ namespace OpenRA.Mods.Common.Widgets
 {
 	public class SupportPowersWidget : Widget
 	{
-		[TranslationReference]
+		[FluentReference]
 		public string ReadyText = "";
 
-		[TranslationReference]
+		[FluentReference]
 		public string HoldText = "";
 
 		public readonly string OverlayFont = "TinyBold";
@@ -56,7 +56,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 		Animation icon;
 		Animation clock;
-		Dictionary<Rectangle, SupportPowerIcon> icons = new();
+		Dictionary<Rectangle, SupportPowerIcon> icons = [];
 
 		public SupportPowerIcon TooltipIcon { get; private set; }
 		public Func<SupportPowerIcon> GetTooltipIcon;
@@ -82,7 +82,7 @@ namespace OpenRA.Mods.Common.Widgets
 				count = FieldLoader.GetValue<int>("HotkeyCount", countNode.Value.Value);
 
 			if (count == 0)
-				return Array.Empty<string>();
+				return [];
 
 			if (string.IsNullOrEmpty(prefix))
 				emitError($"{widgetNode.Location} must define HotkeyPrefix if HotkeyCount > 0.");
@@ -112,9 +112,9 @@ namespace OpenRA.Mods.Common.Widgets
 
 			iconOffset = 0.5f * IconSize.ToFloat2() + IconSpriteOffset;
 
-			HoldText = TranslationProvider.GetString(HoldText);
+			HoldText = FluentProvider.GetMessage(HoldText);
 			holdOffset = iconOffset - overlayFont.Measure(HoldText) / 2;
-			ReadyText = TranslationProvider.GetString(ReadyText);
+			ReadyText = FluentProvider.GetMessage(ReadyText);
 			readyOffset = iconOffset - overlayFont.Measure(ReadyText) / 2;
 
 			clock = new Animation(worldRenderer.World, ClockAnimation);
@@ -132,7 +132,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 		public void RefreshIcons()
 		{
-			icons = new Dictionary<Rectangle, SupportPowerIcon>();
+			icons = [];
 			var powers = spm.Powers.Values.Where(p => !p.Disabled)
 				.OrderBy(p => p.Info.SupportPowerPaletteOrder);
 

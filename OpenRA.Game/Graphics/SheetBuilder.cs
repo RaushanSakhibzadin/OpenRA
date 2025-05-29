@@ -16,7 +16,6 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Graphics
 {
-	[Serializable]
 	public class SheetOverflowException : Exception
 	{
 		public SheetOverflowException(string message)
@@ -34,7 +33,7 @@ namespace OpenRA.Graphics
 	public sealed class SheetBuilder : IDisposable
 	{
 		public readonly SheetType Type;
-		readonly List<Sheet> sheets = new();
+		readonly List<Sheet> sheets = [];
 		readonly Func<Sheet> allocateSheet;
 		readonly int margin;
 		int rowHeight = 0;
@@ -76,8 +75,6 @@ namespace OpenRA.Graphics
 		{
 			CurrentChannel = t == SheetType.Indexed ? TextureChannel.Red : TextureChannel.RGBA;
 			Type = t;
-			Current = allocateSheet();
-			sheets.Add(Current);
 			this.allocateSheet = allocateSheet;
 			this.margin = margin;
 		}
@@ -86,6 +83,12 @@ namespace OpenRA.Graphics
 		public Sprite Add(byte[] src, SpriteFrameType type, Size size, bool premultiplied = false) { return Add(src, type, size, 0, float3.Zero, premultiplied); }
 		public Sprite Add(byte[] src, SpriteFrameType type, Size size, float zRamp, in float3 spriteOffset, bool premultiplied = false)
 		{
+			if (Current == null)
+			{
+				Current = allocateSheet();
+				sheets.Add(Current);
+			}
+
 			// Don't bother allocating empty sprites
 			if (size.Width == 0 || size.Height == 0)
 				return new Sprite(Current, Rectangle.Empty, 0, spriteOffset, CurrentChannel, BlendMode.Alpha);
@@ -116,6 +119,12 @@ namespace OpenRA.Graphics
 		public Sprite Allocate(Size imageSize, float scale = 1f) { return Allocate(imageSize, 0, float3.Zero, scale); }
 		public Sprite Allocate(Size imageSize, float zRamp, in float3 spriteOffset, float scale = 1f)
 		{
+			if (Current == null)
+			{
+				Current = allocateSheet();
+				sheets.Add(Current);
+			}
+
 			if (imageSize.Width + p.X + margin > Current.Size.Width)
 			{
 				p = new int2(0, p.Y + rowHeight + margin);
@@ -130,8 +139,13 @@ namespace OpenRA.Graphics
 				var next = NextChannel(CurrentChannel);
 				if (next == null)
 				{
-					Current.ReleaseBuffer();
+					var previous = Current;
 					Current = allocateSheet();
+
+					// Reuse the backing buffer between sheets where possible.
+					// This avoids allocating additional buffers which the GC must clean up.
+					previous.ReleaseBufferAndTryTransferTo(Current);
+
 					sheets.Add(Current);
 					CurrentChannel = Type == SheetType.Indexed ? TextureChannel.Red : TextureChannel.RGBA;
 				}
@@ -142,7 +156,9 @@ namespace OpenRA.Graphics
 				p = int2.Zero;
 			}
 
-			var rect = new Sprite(Current, new Rectangle(p.X + margin, p.Y + margin, imageSize.Width, imageSize.Height), zRamp, spriteOffset, CurrentChannel, BlendMode.Alpha, scale);
+			var rect = new Sprite(
+				Current, new Rectangle(p.X + margin, p.Y + margin, imageSize.Width, imageSize.Height),
+				zRamp, spriteOffset, CurrentChannel, BlendMode.Alpha, scale);
 			p += new int2(imageSize.Width + margin, 0);
 
 			return rect;

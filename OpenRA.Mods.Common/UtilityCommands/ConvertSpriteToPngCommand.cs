@@ -44,7 +44,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				shadowIndex[^3] = 4;
 			}
 
-			var palette = new ImmutablePalette(args[2], new[] { 0 }, shadowIndex);
+			var palette = new ImmutablePalette(args[2], [0], shadowIndex);
 			var palColors = new Color[Palette.Size];
 			for (var i = 0; i < Palette.Size; i++)
 				palColors[i] = palette.GetColor(i);
@@ -71,11 +71,14 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				var pngData = frame.Data;
 				if (frameSize != frame.Size)
 				{
+					var width = Math.Min(frame.Size.Width, frameSize.Width - offset.X);
+					var height = Math.Min(frame.Size.Height, frameSize.Height - offset.Y);
 					pngData = new byte[frameSize.Width * frameSize.Height];
-					for (var i = 0; i < frame.Size.Height; i++)
-						Buffer.BlockCopy(frame.Data, i * frame.Size.Width,
-							pngData, (i + offset.Y) * frameSize.Width + offset.X,
-							frame.Size.Width);
+					for (var h = 0; h < height; h++)
+						Array.Copy(
+							frame.Data, h * frame.Size.Width,
+							pngData, (h + offset.Y) * frameSize.Width + offset.X,
+							width);
 				}
 
 				var png = new Png(pngData, SpriteFrameType.Indexed8, frameSize.Width, frameSize.Height, palColors);

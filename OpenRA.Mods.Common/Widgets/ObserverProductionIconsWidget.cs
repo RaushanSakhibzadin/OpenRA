@@ -42,8 +42,8 @@ namespace OpenRA.Mods.Common.Widgets
 
 		readonly Dictionary<ProductionQueue, Animation> clocks;
 		readonly Lazy<TooltipContainerWidget> tooltipContainer;
-		readonly List<ProductionIcon> productionIcons = new();
-		readonly List<Rectangle> productionIconsBounds = new();
+		readonly List<ProductionIcon> productionIcons = [];
+		readonly List<Rectangle> productionIconsBounds = [];
 
 		readonly float2 iconSize;
 		int lastIconIdx;
@@ -55,7 +55,7 @@ namespace OpenRA.Mods.Common.Widgets
 		{
 			this.world = world;
 			this.worldRenderer = worldRenderer;
-			clocks = new Dictionary<ProductionQueue, Animation>();
+			clocks = [];
 			GetTooltipIcon = () => TooltipIcon;
 			tooltipContainer = Exts.Lazy(() =>
 				Ui.Root.Get<TooltipContainerWidget>(TooltipContainer));
@@ -234,7 +234,7 @@ namespace OpenRA.Mods.Common.Widgets
 			return WidgetUtils.FormatTime(item.Queue.RemainingTimeActual(item), timestep);
 		}
 
-		public override Widget Clone()
+		public override ObserverProductionIconsWidget Clone()
 		{
 			return new ObserverProductionIconsWidget(this);
 		}
@@ -256,7 +256,10 @@ namespace OpenRA.Mods.Common.Widgets
 				return;
 			}
 
-			if (TooltipIcon != null && productionIconsBounds.Count > lastIconIdx && productionIcons[lastIconIdx].Actor == TooltipIcon.Actor && productionIconsBounds[lastIconIdx].Contains(Viewport.LastMousePos))
+			if (TooltipIcon != null &&
+				productionIconsBounds.Count > lastIconIdx &&
+				productionIcons[lastIconIdx].Actor == TooltipIcon.Actor &&
+				productionIconsBounds[lastIconIdx].Contains(Viewport.LastMousePos))
 				return;
 
 			for (var i = 0; i < productionIconsBounds.Count; i++)
@@ -266,7 +269,9 @@ namespace OpenRA.Mods.Common.Widgets
 
 				lastIconIdx = i;
 				TooltipIcon = productionIcons[i];
-				currentTooltipToken = tooltipContainer.Value.SetTooltip(TooltipTemplate, new WidgetArgs { { "player", GetPlayer() }, { "getTooltipIcon", GetTooltipIcon } });
+				currentTooltipToken = tooltipContainer.Value.SetTooltip(
+					TooltipTemplate,
+					new WidgetArgs { { "player", GetPlayer() }, { "getTooltipIcon", GetTooltipIcon } });
 				return;
 			}
 

@@ -28,7 +28,7 @@ namespace OpenRA.Mods.Common.Traits
 	public class SupportPowerManager : ITick, IResolveOrder, ITechTreeElement
 	{
 		public readonly Actor Self;
-		public readonly Dictionary<string, SupportPowerInstance> Powers = new();
+		public readonly Dictionary<string, SupportPowerInstance> Powers = [];
 
 		public readonly DeveloperMode DevMode;
 		public readonly TechTree TechTree;
@@ -39,7 +39,7 @@ namespace OpenRA.Mods.Common.Traits
 			Self = init.Self;
 			DevMode = Self.Trait<DeveloperMode>();
 			TechTree = Self.Trait<TechTree>();
-			RadarPings = Exts.Lazy(() => init.World.WorldActor.TraitOrDefault<RadarPings>());
+			RadarPings = Exts.Lazy(Self.World.WorldActor.TraitOrDefault<RadarPings>);
 
 			init.World.ActorAdded += ActorAdded;
 			init.World.ActorRemoved += ActorRemoved;
@@ -106,7 +106,7 @@ namespace OpenRA.Mods.Common.Traits
 				sp.Activate(order);
 		}
 
-		static readonly SupportPowerInstance[] NoInstances = Array.Empty<SupportPowerInstance>();
+		static readonly SupportPowerInstance[] NoInstances = [];
 
 		public IEnumerable<SupportPowerInstance> GetPowersForActor(Actor a)
 		{
@@ -144,7 +144,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public readonly string Key;
 
-		public readonly List<SupportPower> Instances = new();
+		public readonly List<SupportPower> Instances = [];
 		public readonly int TotalTicks;
 
 		protected int remainingSubTicks;
@@ -177,8 +177,8 @@ namespace OpenRA.Mods.Common.Traits
 			Key = key;
 			TotalTicks = info.ChargeInterval;
 			remainingSubTicks = info.StartFullyCharged ? 0 : TotalTicks * 100;
-			Name = info.Name == null ? string.Empty : TranslationProvider.GetString(info.Name);
-			Description = info.Description == null ? string.Empty : TranslationProvider.GetString(info.Description);
+			Name = info.Name == null ? string.Empty : FluentProvider.GetMessage(info.Name);
+			Description = info.Description == null ? string.Empty : FluentProvider.GetMessage(info.Description);
 
 			Manager = manager;
 		}
@@ -283,12 +283,12 @@ namespace OpenRA.Mods.Common.Traits
 	public class SelectGenericPowerTarget : OrderGenerator
 	{
 		readonly SupportPowerManager manager;
-		readonly string cursor;
+		readonly SupportPowerInfo info;
 		readonly MouseButton expectedButton;
 
 		public string OrderKey { get; }
 
-		public SelectGenericPowerTarget(string order, SupportPowerManager manager, string cursor, MouseButton button)
+		public SelectGenericPowerTarget(string order, SupportPowerManager manager, SupportPowerInfo info, MouseButton button)
 		{
 			// Clear selection if using Left-Click Orders
 			if (Game.Settings.Game.UseClassicMouseStyle)
@@ -296,7 +296,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			this.manager = manager;
 			OrderKey = order;
-			this.cursor = cursor;
+			this.info = info;
 			expectedButton = button;
 		}
 
@@ -319,7 +319,7 @@ namespace OpenRA.Mods.Common.Traits
 		protected override IEnumerable<IRenderable> RenderAnnotations(WorldRenderer wr, World world) { yield break; }
 		protected override string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)
 		{
-			return world.Map.Contains(cell) ? cursor : "generic-blocked";
+			return world.Map.Contains(cell) ? info.Cursor : info.BlockedCursor;
 		}
 	}
 }

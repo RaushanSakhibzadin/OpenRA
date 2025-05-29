@@ -19,7 +19,8 @@ namespace OpenRA
 	/// <summary>
 	/// 1D angle - 1024 units = 360 degrees.
 	/// </summary>
-	public readonly struct WAngle : IScriptBindable, ILuaAdditionBinding, ILuaSubtractionBinding, ILuaEqualityBinding, IEquatable<WAngle>
+	public readonly struct WAngle : IEquatable<WAngle>, IScriptBindable,
+		ILuaAdditionBinding, ILuaSubtractionBinding, ILuaEqualityBinding, ILuaTableBinding, ILuaToStringBinding
 	{
 		public readonly int Angle;
 		public int AngleSquared => Angle * Angle;
@@ -171,7 +172,7 @@ namespace OpenRA
 		public override string ToString() { return Angle.ToStringInvariant(); }
 
 		static readonly int[] CosineTable =
-		{
+		[
 			1024, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1022, 1022, 1022, 1021,
 			1021, 1020, 1020, 1019, 1019, 1018, 1017, 1017, 1016, 1015, 1014, 1013,
 			1012, 1011, 1010, 1009, 1008, 1007, 1006, 1005, 1004, 1003, 1001, 1000,
@@ -191,10 +192,10 @@ namespace OpenRA
 			236, 230, 224, 218, 212, 205, 199, 193, 187, 181, 175, 168, 162, 156,
 			150, 144, 137, 131, 125, 119, 112, 106, 100, 94, 87, 81, 75, 69, 62,
 			56, 50, 43, 37, 31, 25, 18, 12, 6, 0
-		};
+		];
 
 		static readonly int[] TanTable =
-		{
+		[
 			0, 6, 12, 18, 25, 31, 37, 44, 50, 56, 62, 69, 75, 81, 88, 94, 100, 107,
 			113, 119, 126, 132, 139, 145, 151, 158, 164, 171, 177, 184, 190, 197,
 			203, 210, 216, 223, 229, 236, 243, 249, 256, 263, 269, 276, 283, 290,
@@ -215,30 +216,38 @@ namespace OpenRA
 			5499, 5693, 5901, 6124, 6364, 6622, 6903, 7207, 7539, 7902, 8302, 8743,
 			9233, 9781, 10396, 11094, 11891, 12810, 13882, 15148, 16667, 18524, 20843,
 			23826, 27801, 33366, 41713, 55622, 83438, 166883, int.MaxValue
-		};
+		];
 
 		#region Scripting interface
 
 		public LuaValue Add(LuaRuntime runtime, LuaValue left, LuaValue right)
 		{
 			if (!left.TryGetClrValue(out WAngle a))
-				throw new LuaException($"Attempted to call WAngle.Add(WAngle, WAngle) with invalid arguments ({left.WrappedClrType().Name}, {right.WrappedClrType().Name})");
+				throw new LuaException(
+					"Attempted to call WAngle.Add(WAngle, WAngle) with invalid arguments " +
+					$"({left.WrappedClrType().Name}, {right.WrappedClrType().Name})");
 
 			if (right.TryGetClrValue(out WAngle b))
 				return new LuaCustomClrObject(a + b);
 
-			throw new LuaException($"Attempted to call WAngle.Add(WAngle, WAngle) with invalid arguments ({left.WrappedClrType().Name}, {right.WrappedClrType().Name})");
+			throw new LuaException(
+				"Attempted to call WAngle.Add(WAngle, WAngle) with invalid arguments " +
+				$"({left.WrappedClrType().Name}, {right.WrappedClrType().Name})");
 		}
 
 		public LuaValue Subtract(LuaRuntime runtime, LuaValue left, LuaValue right)
 		{
 			if (!left.TryGetClrValue(out WAngle a))
-				throw new LuaException($"Attempted to call WAngle.Subtract(WAngle, WAngle) with invalid arguments ({left.WrappedClrType().Name}, {right.WrappedClrType().Name})");
+				throw new LuaException(
+					"Attempted to call WAngle.Subtract(WAngle, WAngle) with invalid arguments " +
+					$"({left.WrappedClrType().Name}, {right.WrappedClrType().Name})");
 
 			if (right.TryGetClrValue(out WAngle b))
 				return new LuaCustomClrObject(a - b);
 
-			throw new LuaException($"Attempted to call WAngle.Subtract(WAngle, WAngle) with invalid arguments ({left.WrappedClrType().Name}, {right.WrappedClrType().Name})");
+			throw new LuaException(
+				"Attempted to call WAngle.Subtract(WAngle, WAngle) with invalid arguments " +
+				$"({left.WrappedClrType().Name}, {right.WrappedClrType().Name})");
 		}
 
 		public LuaValue Equals(LuaRuntime runtime, LuaValue left, LuaValue right)
@@ -248,6 +257,22 @@ namespace OpenRA
 
 			return a == b;
 		}
+
+		public LuaValue this[LuaRuntime runtime, LuaValue key]
+		{
+			get
+			{
+				switch (key.ToString())
+				{
+					case "Angle": return Angle;
+					default: throw new LuaException($"WAngle does not define a member '{key}'");
+				}
+			}
+
+			set => throw new LuaException("WAngle is read-only. Use Angle.New to create a new value");
+		}
+
+		public LuaValue ToString(LuaRuntime runtime) => ToString();
 
 		#endregion
 	}

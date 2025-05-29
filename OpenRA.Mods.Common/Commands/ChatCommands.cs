@@ -10,26 +10,26 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Linq;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Commands
 {
 	[TraitLocation(SystemActors.World)]
+	[IncludeStaticFluentReferences(typeof(ChatCommands))]
 	[Desc("Enables commands triggered by typing them into the chatbox. Attach this to the world actor.")]
 	public class ChatCommandsInfo : TraitInfo<ChatCommands> { }
 
 	public class ChatCommands : INotifyChat
 	{
-		[TranslationReference("name")]
+		[FluentReference("name")]
 		const string InvalidCommand = "notification-invalid-command";
 
 		public Dictionary<string, IChatCommand> Commands { get; }
 
 		public ChatCommands()
 		{
-			Commands = new Dictionary<string, IChatCommand>();
+			Commands = [];
 		}
 
 		public bool OnChat(string playername, string message)
@@ -37,12 +37,11 @@ namespace OpenRA.Mods.Common.Commands
 			if (message.StartsWith('/'))
 			{
 				var name = message[1..].Split(' ')[0].ToLowerInvariant();
-				var command = Commands.FirstOrDefault(x => x.Key == name);
 
-				if (command.Value != null)
-					command.Value.InvokeCommand(name.ToLowerInvariant(), message[(1 + name.Length)..].Trim());
+				if (Commands.TryGetValue(name, out var command))
+					command.InvokeCommand(name, message[(1 + name.Length)..].Trim());
 				else
-					TextNotificationsManager.Debug(TranslationProvider.GetString(InvalidCommand, Translation.Arguments("name", name)));
+					TextNotificationsManager.Debug(FluentProvider.GetMessage(InvalidCommand, "name", name));
 
 				return false;
 			}

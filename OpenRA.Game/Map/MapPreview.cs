@@ -26,7 +26,7 @@ using OpenRA.Support;
 
 namespace OpenRA
 {
-	public enum MapStatus { Available, Unavailable, Searching, DownloadAvailable, Downloading, DownloadError }
+	public enum MapStatus { Available, Unavailable, Searching, DownloadAvailable, Downloading, DownloadError, Generating }
 
 	// Used for grouping maps in the UI
 	[Flags]
@@ -35,7 +35,8 @@ namespace OpenRA
 		Unknown = 0,
 		System = 1,
 		User = 2,
-		Remote = 4
+		Remote = 4,
+		Generated = 8
 	}
 
 	[SuppressMessage("StyleCop.CSharp.NamingRules",
@@ -51,7 +52,7 @@ namespace OpenRA
 		public readonly string[] categories;
 		public readonly int players;
 		public readonly Rectangle bounds;
-		public readonly short[] spawnpoints = Array.Empty<short>();
+		public readonly short[] spawnpoints = [];
 		public readonly MapGridType map_grid_type;
 		public readonly string minimap;
 		public readonly bool downloading;
@@ -90,8 +91,9 @@ namespace OpenRA
 			public MiniYaml NotificationDefinitions;
 			public MiniYaml SequenceDefinitions;
 			public MiniYaml ModelSequenceDefinitions;
+			public MiniYaml FluentMessageDefinitions;
 
-			public Translation Translation { get; private set; }
+			public FluentBundle FluentBundle { get; private set; }
 			public ActorInfo WorldActorInfo { get; private set; }
 			public ActorInfo PlayerActorInfo { get; private set; }
 
@@ -112,7 +114,7 @@ namespace OpenRA
 				return key == "world" || key == "player";
 			}
 
-			public void SetCustomRules(ModData modData, IReadOnlyFileSystem fileSystem, Dictionary<string, MiniYaml> yaml, IEnumerable<List<MiniYamlNode>> modDataRules)
+			public void SetCustomRules(ModData modData, IReadOnlyFileSystem fileSystem, Dictionary<string, MiniYaml> yaml, MiniYamlNode[][] modDataRules)
 			{
 				RuleDefinitions = LoadRuleSection(yaml, "Rules");
 				WeaponDefinitions = LoadRuleSection(yaml, "Weapons");
@@ -121,13 +123,32 @@ namespace OpenRA
 				NotificationDefinitions = LoadRuleSection(yaml, "Notifications");
 				SequenceDefinitions = LoadRuleSection(yaml, "Sequences");
 				ModelSequenceDefinitions = LoadRuleSection(yaml, "ModelSequences");
-
-				Translation = yaml.TryGetValue("Translations", out var node) && node != null
-					? new Translation(Game.Settings.Player.Language, FieldLoader.GetValue<string[]>("value", node.Value), fileSystem)
-					: null;
+				FluentMessageDefinitions = LoadRuleSection(yaml, "FluentMessages");
 
 				try
 				{
+					if (FluentMessageDefinitions != null)
+					{
+						var files = Array.Empty<string>();
+						if (FluentMessageDefinitions.Value != null)
+							files = FieldLoader.GetValue<string[]>("value", FluentMessageDefinitions.Value);
+
+						string text = null;
+						if (FluentMessageDefinitions.Nodes.Length > 0)
+						{
+							var builder = new StringBuilder();
+							foreach (var node in FluentMessageDefinitions.Nodes)
+								if (node.Key == "base64")
+									builder.Append(Encoding.UTF8.GetString(Convert.FromBase64String(node.Value.Value)));
+
+							text = builder.ToString();
+						}
+
+						FluentBundle = new FluentBundle(modData.Manifest.FluentCulture, files, fileSystem, text);
+					}
+					else
+						FluentBundle = null;
+
 					// PERF: Implement a minimal custom loader for custom world and player actors to minimize loading time
 					// This assumes/enforces that these actor types can only inherit abstract definitions (starting with ^)
 					if (RuleDefinitions != null)
@@ -148,8 +169,14 @@ namespace OpenRA
 							sources = sources.Append(RuleDefinitions.Nodes.Where(IsLoadableRuleDefinition).ToList());
 
 						var yamlNodes = MiniYaml.Merge(sources);
-						WorldActorInfo = new ActorInfo(modData.ObjectCreator, "world", yamlNodes.First(n => string.Equals(n.Key, "world", StringComparison.InvariantCultureIgnoreCase)).Value);
-						PlayerActorInfo = new ActorInfo(modData.ObjectCreator, "player", yamlNodes.First(n => string.Equals(n.Key, "player", StringComparison.InvariantCultureIgnoreCase)).Value);
+						WorldActorInfo = new ActorInfo(
+							modData.ObjectCreator,
+							"world",
+							yamlNodes.First(n => string.Equals(n.Key, "world", StringComparison.InvariantCultureIgnoreCase)).Value);
+						PlayerActorInfo = new ActorInfo(
+							modData.ObjectCreator,
+							"player",
+							yamlNodes.First(n => string.Equals(n.Key, "player", StringComparison.InvariantCultureIgnoreCase)).Value);
 						return;
 					}
 				}
@@ -169,12 +196,42 @@ namespace OpenRA
 			}
 		}
 
-		static readonly CPos[] NoSpawns = Array.Empty<CPos>();
+		static readonly CPos[] NoSpawns = [];
+		readonly object syncRoot = new();
 		readonly MapCache cache;
 		readonly ModData modData;
+		IReadOnlyPackage package;
 
 		public readonly string Uid;
-		public IReadOnlyPackage Package { get; private set; }
+
+		public string Path { get; private set; }
+
+		void LoadPackage()
+		{
+			if (package == null && parentPackage != null)
+				package = parentPackage.OpenPackage(Path, modData.ModFiles);
+		}
+
+		public Map ToMap()
+		{
+			LoadPackage();
+			using (new PerfTimer("Map"))
+				return new Map(modData, package);
+		}
+
+		public string ToBase64String()
+		{
+			LoadPackage();
+			if (package is not ZipFileLoader.ReadWriteZipFile p)
+			{
+				var map = new Map(modData, package);
+				p = new ZipFileLoader.ReadWriteZipFile();
+				map.Save(p);
+			}
+
+			return p.ToBase64String();
+		}
+
 		IReadOnlyPackage parentPackage;
 
 		volatile InnerData innerData;
@@ -206,16 +263,31 @@ namespace OpenRA
 		public int DownloadPercentage { get; private set; }
 
 		/// <summary>
-		/// Functionality mirrors <see cref="TranslationProvider.GetString"/>, except instead of using
-		/// loaded <see cref="Map"/>'s translations as backup, we use this <see cref="MapPreview"/>'s.
+		/// Functionality mirrors <see cref="FluentProvider.GetMessage"/>, except instead of using
+		/// loaded <see cref="Map"/>'s fluent bundle as backup, we use this <see cref="MapPreview"/>'s.
 		/// </summary>
-		public string GetLocalisedString(string key, IDictionary<string, object> args = null)
+		public string GetMessage(string key, object[] args = null)
 		{
-			// PERF: instead of loading mod level Translation per each MapPreview, reuse the already loaded one in TranslationProvider.
-			if (TranslationProvider.TryGetModString(key, out var message, args))
+			if (TryGetMessage(key, out var message, args))
 				return message;
 
-			return innerData.Translation?.GetString(key, args) ?? key;
+			return key;
+		}
+
+		/// <summary>
+		/// Functionality mirrors <see cref="FluentProvider.TryGetMessage"/>, except instead of using
+		/// loaded <see cref="Map"/>'s fluent bundle as backup, we use this <see cref="MapPreview"/>'s.
+		/// </summary>
+		public bool TryGetMessage(string key, out string message, object[] args = null)
+		{
+			// PERF: instead of loading mod level strings per each MapPreview, reuse the already loaded one in FluentProvider.
+			if (FluentProvider.TryGetModMessage(key, out message, args))
+				return true;
+
+			if (innerData.FluentBundle == null)
+				return false;
+
+			return innerData.FluentBundle.TryGetMessage(key, out message, args);
 		}
 
 		Sprite minimap;
@@ -264,7 +336,7 @@ namespace OpenRA
 			{
 				MapFormat = 0,
 				Title = "Unknown Map",
-				Categories = new[] { "Unknown" },
+				Categories = ["Unknown"],
 				Author = "Unknown Author",
 				TileSet = "unknown",
 				Players = null,
@@ -279,56 +351,28 @@ namespace OpenRA
 			};
 		}
 
-		// For linting purposes only!
-		public MapPreview(Map map, ModData modData)
+		/// <summary>
+		/// Updates internal state from a map without taking ownership of its package.
+		/// A new copy of the map package will be opened lazily when needed.
+		/// </summary>
+		public void UpdateFromMapWithoutOwningPackage(IReadOnlyPackage p, IReadOnlyPackage parent, MapClassification classification,
+			MapGridType? gridType = null, MiniYamlNode[][] modDataRules = null)
 		{
-			this.modData = modData;
-			cache = modData.MapCache;
-
-			Uid = map.Uid;
-			Package = map.Package;
-
-			var mapPlayers = new MapPlayers(map.PlayerDefinitions);
-			var spawns = new List<CPos>();
-			foreach (var kv in map.ActorDefinitions.Where(d => d.Value.Value == "mpspawn"))
-			{
-				var s = new ActorReference(kv.Value.Value, kv.Value.ToDictionary());
-				spawns.Add(s.Get<LocationInit>().Value);
-			}
-
-			innerData = new InnerData
-			{
-				MapFormat = map.MapFormat,
-				Title = map.Title,
-				Categories = map.Categories,
-				Author = map.Author,
-				TileSet = map.Tileset,
-				Players = mapPlayers,
-				PlayerCount = mapPlayers.Players.Count(x => x.Value.Playable),
-				SpawnPoints = spawns.ToArray(),
-				GridType = map.Grid.Type,
-				Bounds = map.Bounds,
-				Preview = null,
-				Status = MapStatus.Available,
-				Class = MapClassification.Unknown,
-				Visibility = map.Visibility,
-			};
-
-			innerData.SetCustomRules(modData, this, new Dictionary<string, MiniYaml>()
-			{
-				{ "Rules", map.RuleDefinitions },
-				{ "Translations", map.TranslationDefinitions },
-				{ "Weapons", map.WeaponDefinitions },
-				{ "Voices", map.VoiceDefinitions },
-				{ "Music", map.MusicDefinitions },
-				{ "Notifications", map.NotificationDefinitions },
-				{ "Sequences", map.SequenceDefinitions },
-				{ "ModelSequences", map.ModelSequenceDefinitions }
-			}, null);
+			UpdateFromMap(p, classification, gridType, modDataRules);
+			parentPackage = parent;
+			package = null;
 		}
 
-		public void UpdateFromMap(IReadOnlyPackage p, IReadOnlyPackage parent, MapClassification classification, string[] mapCompatibility, MapGridType gridType, IEnumerable<List<MiniYamlNode>> modDataRules)
+		/// <summary>
+		/// Updates internal state from a map and takes ownership of its package.
+		/// The package remains in memory and must not be disposed.
+		/// </summary>
+		public void UpdateFromMap(IReadOnlyPackage p, MapClassification classification,
+			MapGridType? gridType = null, MiniYamlNode[][] modDataRules = null)
 		{
+			Path = p.Name;
+			package = p;
+
 			Dictionary<string, MiniYaml> yaml;
 			using (var yamlStream = p.GetStream("map.yaml"))
 			{
@@ -338,12 +382,9 @@ namespace OpenRA
 				yaml = new MiniYaml(null, MiniYaml.FromStream(yamlStream, $"{p.Name}:map.yaml", stringPool: cache.StringPool)).ToDictionary();
 			}
 
-			Package = p;
-			parentPackage = parent;
-
 			var newData = innerData.Clone();
-			newData.GridType = gridType;
 			newData.Class = classification;
+			newData.GridType = gridType ?? modData.Manifest.Get<MapGrid>().Type;
 
 			if (yaml.TryGetValue("MapFormat", out var temp))
 			{
@@ -377,7 +418,7 @@ namespace OpenRA
 			if (yaml.TryGetValue("MapFormat", out temp))
 				newData.MapFormat = FieldLoader.GetValue<int>("MapFormat", temp.Value);
 
-			newData.Status = mapCompatibility == null || mapCompatibility.Contains(requiresMod) ?
+			newData.Status = modData.Manifest.MapCompatibility.Contains(requiresMod) ?
 				MapStatus.Available : MapStatus.Unavailable;
 
 			try
@@ -395,11 +436,11 @@ namespace OpenRA
 					newData.SpawnPoints = spawns.ToArray();
 				}
 				else
-					newData.SpawnPoints = Array.Empty<CPos>();
+					newData.SpawnPoints = [];
 			}
 			catch (Exception)
 			{
-				newData.SpawnPoints = Array.Empty<CPos>();
+				newData.SpawnPoints = [];
 				newData.Status = MapStatus.Unavailable;
 			}
 
@@ -423,31 +464,57 @@ namespace OpenRA
 				using (var dataStream = p.GetStream("map.png"))
 					newData.Preview = new Png(dataStream);
 
-			newData.ModifiedDate = File.GetLastWriteTime(p.Name);
+			newData.ModifiedDate = p.Name != null ? File.GetLastWriteTime(p.Name) : DateTime.Now;
 
 			// Assign the new data atomically
-			innerData = newData;
+			// Local maps have higher precedence than remote/generated maps,
+			// so should always replace their metadata
+			lock (syncRoot)
+				innerData = newData;
 		}
 
-		public void UpdateRemoteSearch(MapStatus status, MiniYaml yaml, string[] mapCompatibility, Action<MapPreview> parseMetadata = null)
+		public void UpdateFromGenerationArgs(MapGenerationArgs args)
 		{
 			var newData = innerData.Clone();
-			newData.Status = status;
-			newData.Class = MapClassification.Remote;
+			newData.Class = MapClassification.Generated;
+			if (args != null)
+			{
+				newData.Status = MapStatus.Generating;
+				newData.Title = args.Title;
+				newData.Author = args.Author;
+			}
+			else
+				newData.Status = MapStatus.Unavailable;
 
-			if (status == MapStatus.DownloadAvailable)
+			lock (syncRoot)
+				innerData = newData;
+		}
+
+		public void BeginRemoteSearch()
+		{
+			var newData = innerData.Clone();
+			newData.Class = MapClassification.Remote;
+			newData.Status = MapStatus.Searching;
+
+			// We may have been resolved to a local/generated map by another
+			// async task. Make sure we don't stomp over their state!
+			lock (syncRoot)
+				if (innerData.Class == MapClassification.Unknown || innerData.Class == MapClassification.Remote)
+					innerData = newData;
+		}
+
+		public void CompleteRemoteSearch(MiniYaml yaml, Action<MapPreview> parseMetadata = null)
+		{
+			var newData = innerData.Clone();
+			newData.Class = MapClassification.Remote;
+			newData.Status = MapStatus.Unavailable;
+
+			if (yaml != null)
 			{
 				try
 				{
 					var r = FieldLoader.Load<RemoteMapData>(yaml);
-
-					// Map download has been disabled server side
-					if (!r.downloading)
-					{
-						newData.Status = MapStatus.Unavailable;
-						return;
-					}
-
+					newData.Status = r.downloading ? MapStatus.DownloadAvailable : MapStatus.Unavailable;
 					newData.Title = r.title;
 					newData.Categories = r.categories;
 					newData.Author = r.author;
@@ -487,29 +554,37 @@ namespace OpenRA
 					// Map is for a different mod: update its information so it can be displayed
 					// in the cross-mod server browser UI, but mark it as unavailable so it can't
 					// be selected in a server for the current mod.
-					if (!mapCompatibility.Contains(r.game_mod))
+					if (!modData.Manifest.MapCompatibility.Contains(r.game_mod))
 						newData.Status = MapStatus.Unavailable;
 				}
 				catch (Exception e)
 				{
 					Log.Write("debug", "Failed parsing mapserver response:");
 					Log.Write("debug", e);
+					newData.Status = MapStatus.Unavailable;
 				}
+			}
 
-				// Commit updated data before running the callbacks
-				innerData = newData;
+			// We may have been resolved to a local/generated map by another
+			// async task. Make sure we don't stomp over their state!
+			MapClassification mapClassification;
+			lock (syncRoot)
+			{
+				mapClassification = innerData.Class;
+				if (mapClassification == MapClassification.Remote)
+					innerData = newData;
+			}
 
+			if (mapClassification == MapClassification.Remote)
+			{
 				if (innerData.Preview != null)
 					cache.CacheMinimap(this);
 
 				parseMetadata?.Invoke(this);
 			}
-
-			// Update the status and class unconditionally
-			innerData = newData;
 		}
 
-		public void Install(string mapRepositoryUrl, Action onSuccess)
+		public void Install(string mapRepositoryUrl)
 		{
 			if ((Status != MapStatus.DownloadError && Status != MapStatus.DownloadAvailable) || !Game.Settings.Game.AllowDownloading)
 				return;
@@ -562,14 +637,11 @@ namespace OpenRA
 					mapInstallPackage.Update(mapFilename, fileStream.ToArray());
 					Log.Write("debug", $"Downloaded map to '{mapFilename}'");
 
-					var package = mapInstallPackage.OpenPackage(mapFilename, modData.ModFiles);
-					if (package == null)
+					var p = mapInstallPackage.OpenPackage(mapFilename, modData.ModFiles);
+					if (p == null)
 						innerData.Status = MapStatus.DownloadError;
 					else
-					{
-						UpdateFromMap(package, mapInstallPackage, MapClassification.User, null, GridType, null);
-						Game.RunAfterTick(onSuccess);
-					}
+						UpdateFromMapWithoutOwningPackage(p, mapInstallPackage, MapClassification.User, GridType);
 				}
 				catch (Exception e)
 				{
@@ -582,29 +654,34 @@ namespace OpenRA
 
 		public void Invalidate()
 		{
-			innerData.Status = MapStatus.Unavailable;
+			lock (syncRoot)
+			{
+				innerData.Class = MapClassification.Unknown;
+				innerData.Status = MapStatus.Unavailable;
+			}
 		}
 
 		public void Dispose()
 		{
-			if (Package != null)
+			if (package != null)
 			{
-				Package.Dispose();
-				Package = null;
+				package.Dispose();
+				package = null;
 			}
 		}
 
 		public void Delete()
 		{
 			Invalidate();
-			(parentPackage as IReadWritePackage)?.Delete(Package.Name);
+			(parentPackage as IReadWritePackage)?.Delete(Path);
 		}
 
 		Stream IReadOnlyFileSystem.Open(string filename)
 		{
 			// Explicit package paths never refer to a map
-			if (!filename.Contains('|') && Package.Contains(filename))
-				return Package.GetStream(filename);
+			LoadPackage();
+			if (!filename.Contains('|') && package.Contains(filename))
+				return package.GetStream(filename);
 
 			return modData.DefaultFileSystem.Open(filename);
 		}
@@ -620,7 +697,8 @@ namespace OpenRA
 			// Explicit package paths never refer to a map
 			if (!filename.Contains('|'))
 			{
-				s = Package.GetStream(filename);
+				LoadPackage();
+				s = package.GetStream(filename);
 				if (s != null)
 					return true;
 			}
@@ -631,17 +709,18 @@ namespace OpenRA
 		bool IReadOnlyFileSystem.Exists(string filename)
 		{
 			// Explicit package paths never refer to a map
-			if (!filename.Contains('|') && Package.Contains(filename))
+			LoadPackage();
+			if (!filename.Contains('|') && package.Contains(filename))
 				return true;
 
 			return modData.DefaultFileSystem.Exists(filename);
 		}
 
-		bool IReadOnlyFileSystem.IsExternalModFile(string filename)
+		bool IReadOnlyFileSystem.IsExternalFile(string filename)
 		{
 			// Explicit package paths never refer to a map
 			if (filename.Contains('|'))
-				return modData.DefaultFileSystem.IsExternalModFile(filename);
+				return modData.DefaultFileSystem.IsExternalFile(filename);
 
 			return false;
 		}

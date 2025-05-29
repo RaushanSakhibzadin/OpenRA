@@ -25,7 +25,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int Duration = 0;
 
 		[Desc("Allowed to land on.")]
-		public readonly HashSet<string> TerrainTypes = new();
+		public readonly HashSet<string> TerrainTypes = [];
 
 		[Desc("Define actors that can collect crates by setting this into the Crushes field from the Mobile trait.")]
 		public readonly string CrushClass = "crate";
@@ -39,7 +39,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		bool IOccupySpaceInfo.SharesCell => false;
 
-		public bool CanEnterCell(World world, Actor self, CPos cell, SubCell subCell = SubCell.FullCell, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
+		public bool CanEnterCell(World world, Actor self, CPos cell,
+			SubCell subCell = SubCell.FullCell, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
 		{
 			// Since crates don't share cells and GetAvailableSubCell only returns SubCell.Full or SubCell.Invalid, we ignore the subCell parameter
 			return GetAvailableSubCell(world, cell, ignoreActor, check) != SubCell.Invalid;
@@ -186,7 +187,7 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		public CPos TopLeft => Location;
-		public (CPos, SubCell)[] OccupiedCells() { return new[] { (Location, SubCell.FullCell) }; }
+		public (CPos, SubCell)[] OccupiedCells() { return [(Location, SubCell.FullCell)]; }
 
 		public WPos CenterPosition { get; private set; }
 

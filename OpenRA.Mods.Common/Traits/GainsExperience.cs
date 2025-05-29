@@ -49,7 +49,7 @@ namespace OpenRA.Mods.Common.Traits
 		[NotificationReference("Sounds")]
 		public readonly string LevelUpNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		public readonly string LevelUpTextNotification = null;
 
 		public override object Create(ActorInitializer init) { return new GainsExperience(init, this); }
@@ -61,7 +61,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly GainsExperienceInfo info;
 		readonly int initialExperience;
 
-		readonly List<(int RequiredExperience, string Condition)> nextLevel = new();
+		readonly List<(int RequiredExperience, string Condition)> nextLevel = [];
 
 		// Stored as a percentage of our value
 		[Sync]

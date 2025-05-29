@@ -22,7 +22,7 @@ namespace OpenRA
 	{
 		// .NET does not support unloading assemblies, so mod libraries will leak across mod changes.
 		// This tracks the assemblies that have been loaded since game start so that we don't load multiple copies
-		static readonly Dictionary<string, Assembly> ResolvedAssemblies = new();
+		static readonly Dictionary<string, Assembly> ResolvedAssemblies = [];
 
 		readonly Cache<string, Type> typeCache;
 		readonly Cache<Type, ConstructorInfo> ctorCache;
@@ -34,16 +34,10 @@ namespace OpenRA
 			ctorCache = new Cache<Type, ConstructorInfo>(GetCtor);
 
 			// Allow mods to load types from the core Game assembly, and any additional assemblies they specify.
-			// Assemblies can only be loaded from directories to avoid circular dependencies on package loaders.
+			// Assemblies must exist in the game binary directory next to the main game executable.
 			var assemblyList = new List<Assembly>() { typeof(Game).Assembly };
-			foreach (var path in manifest.Assemblies)
-			{
-				var resolvedPath = FileSystem.FileSystem.ResolveAssemblyPath(path, manifest, mods);
-				if (resolvedPath == null)
-					throw new FileNotFoundException($"Assembly `{path}` not found.");
-
-				LoadAssembly(assemblyList, resolvedPath);
-			}
+			foreach (var filename in manifest.Assemblies)
+				LoadAssembly(assemblyList, Path.Combine(Platform.BinDir, filename));
 
 			AppDomain.CurrentDomain.AssemblyResolve += ResolveAssembly;
 			assemblies = assemblyList.SelectMany(asm => asm.GetNamespaces().Select(ns => (asm, ns))).ToArray();
@@ -61,26 +55,9 @@ namespace OpenRA
 
 			if (!ResolvedAssemblies.TryGetValue(hash, out var assembly))
 			{
-#if NET5_0_OR_GREATER
 				var loader = new Support.AssemblyLoader(resolvedPath);
 				assembly = loader.LoadDefaultAssembly();
 				ResolvedAssemblies.Add(hash, assembly);
-#else
-				assembly = Assembly.LoadFile(resolvedPath);
-				ResolvedAssemblies.Add(hash, assembly);
-
-				// Allow mods to use libraries.
-				var assemblyPath = Path.GetDirectoryName(resolvedPath);
-				if (assemblyPath != null)
-				{
-					foreach (var referencedAssembly in assembly.GetReferencedAssemblies())
-					{
-						var depedencyPath = Path.Combine(assemblyPath, referencedAssembly.Name + ".dll");
-						if (File.Exists(depedencyPath))
-							LoadAssembly(assemblyList, depedencyPath);
-					}
-				}
-#endif
 			}
 
 			assemblyList.Add(assembly);
@@ -100,7 +77,7 @@ namespace OpenRA
 
 		public T CreateObject<T>(string className)
 		{
-			return CreateObject<T>(className, new Dictionary<string, object>());
+			return CreateObject<T>(className, []);
 		}
 
 		public T CreateObject<T>(string className, Dictionary<string, object> args)
@@ -142,7 +119,7 @@ namespace OpenRA
 
 		public object CreateBasic(Type type)
 		{
-			return type.GetConstructor(Array.Empty<Type>()).Invoke(Array.Empty<object>());
+			return type.GetConstructor([]).Invoke([]);
 		}
 
 		public object CreateUsingArgs(ConstructorInfo ctor, Dictionary<string, object> args)
@@ -171,17 +148,20 @@ namespace OpenRA
 				.SelectMany(ma => ma.GetTypes());
 		}
 
+		public TLoader GetLoader<TLoader>(string format, string name)
+		{
+			var loader = FindType(format + "Loader");
+			if (loader == null || !loader.GetInterfaces().Contains(typeof(TLoader)))
+				throw new InvalidOperationException($"Unable to find a {name} loader for type '{format}'.");
+
+			return (TLoader)CreateBasic(loader);
+		}
+
 		public TLoader[] GetLoaders<TLoader>(IEnumerable<string> formats, string name)
 		{
 			var loaders = new List<TLoader>();
 			foreach (var format in formats)
-			{
-				var loader = FindType(format + "Loader");
-				if (loader == null || !loader.GetInterfaces().Contains(typeof(TLoader)))
-					throw new InvalidOperationException($"Unable to find a {name} loader for type '{format}'.");
-
-				loaders.Add((TLoader)CreateBasic(loader));
-			}
+				loaders.Add(GetLoader<TLoader>(format, name));
 
 			return loaders.ToArray();
 		}

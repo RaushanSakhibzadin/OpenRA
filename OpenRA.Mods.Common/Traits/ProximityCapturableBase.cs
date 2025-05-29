@@ -41,7 +41,8 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			var pci = rules.Actors[SystemActors.Player].TraitInfoOrDefault<ProximityCaptorInfo>();
 			if (pci == null)
-				throw new YamlException(nameof(ProximityCapturableBase) + " requires the `" + nameof(Player) + "` actor to have the " + nameof(ProximityCaptor) + " trait.");
+				throw new YamlException(
+					nameof(ProximityCapturableBase) + " requires the `" + nameof(Player) + "` actor to have the " + nameof(ProximityCaptor) + " trait.");
 		}
 
 		public abstract override object Create(ActorInitializer init);
@@ -55,7 +56,7 @@ namespace OpenRA.Mods.Common.Traits
 		public ProximityCapturableBaseInfo Info;
 		public Actor Self;
 
-		readonly List<Actor> actorsInRange = new();
+		readonly List<Actor> actorsInRange = [];
 		protected int trigger;
 		WPos prevPosition;
 		bool skipTriggerUpdate;
@@ -201,9 +202,9 @@ namespace OpenRA.Mods.Common.Traits
 		IEnumerable<IRenderable> IRenderAnnotations.RenderAnnotations(Actor self, WorldRenderer wr)
 		{
 			if (!self.IsInWorld || !Info.DrawDecoration)
-				return Enumerable.Empty<IRenderable>();
+				return [];
 
-			return new[] { GetRenderable(self, wr) };
+			return [GetRenderable(self, wr)];
 		}
 
 		bool IRenderAnnotations.SpatiallyPartitionable { get { return false; } }

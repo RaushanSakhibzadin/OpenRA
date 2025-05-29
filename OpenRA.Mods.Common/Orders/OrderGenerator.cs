@@ -10,7 +10,6 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Orders;
 
@@ -23,7 +22,7 @@ namespace OpenRA.Mods.Common.Orders
 			if ((mi.Button == MouseButton.Left && mi.Event == MouseInputEvent.Down) || (mi.Button == MouseButton.Right && mi.Event == MouseInputEvent.Up))
 				return OrderInner(world, cell, worldPixel, mi);
 
-			return Enumerable.Empty<Order>();
+			return [];
 		}
 
 		void IOrderGenerator.Tick(World world) { Tick(world); }
@@ -31,7 +30,7 @@ namespace OpenRA.Mods.Common.Orders
 		IEnumerable<IRenderable> IOrderGenerator.RenderAboveShroud(WorldRenderer wr, World world) { return RenderAboveShroud(wr, world); }
 		IEnumerable<IRenderable> IOrderGenerator.RenderAnnotations(WorldRenderer wr, World world) { return RenderAnnotations(wr, world); }
 		string IOrderGenerator.GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi) { return GetCursor(world, cell, worldPixel, mi); }
-		void IOrderGenerator.Deactivate() { Deactivate(); }
+		void IOrderGenerator.Deactivate() { }
 		bool IOrderGenerator.HandleKeyPress(KeyInput e) { return false; }
 		void IOrderGenerator.SelectionChanged(World world, IEnumerable<Actor> selected) { SelectionChanged(world, selected); }
 
@@ -42,6 +41,5 @@ namespace OpenRA.Mods.Common.Orders
 		protected abstract string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi);
 		protected abstract IEnumerable<Order> OrderInner(World world, CPos cell, int2 worldPixel, MouseInput mi);
 		protected virtual void SelectionChanged(World world, IEnumerable<Actor> selected) { }
-		protected virtual void Deactivate() { }
 	}
 }

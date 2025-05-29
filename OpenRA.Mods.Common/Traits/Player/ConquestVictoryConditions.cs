@@ -16,6 +16,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[TraitLocation(SystemActors.Player)]
+	[IncludeStaticFluentReferences(typeof(ConquestVictoryConditions))]
 	public class ConquestVictoryConditionsInfo : TraitInfo, Requires<MissionObjectivesInfo>
 	{
 		[Desc("Delay for the end game notification in milliseconds.")]
@@ -32,10 +33,10 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class ConquestVictoryConditions : ITick, INotifyWinStateChanged, INotifyTimeLimit
 	{
-		[TranslationReference("player")]
+		[FluentReference("player")]
 		const string PlayerIsVictorious = "notification-player-is-victorious";
 
-		[TranslationReference("player")]
+		[FluentReference("player")]
 		const string PlayerIsDefeated = "notification-player-is-defeated";
 
 		readonly ConquestVictoryConditionsInfo info;
@@ -105,7 +106,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (info.SuppressNotifications)
 				return;
 
-			TextNotificationsManager.AddSystemLine(PlayerIsDefeated, Translation.Arguments("player", player.PlayerName));
+			TextNotificationsManager.AddSystemLine(PlayerIsDefeated, "player", player.ResolvedPlayerName);
 			Game.RunAfterDelay(info.NotificationDelay, () =>
 			{
 				if (Game.IsCurrentWorld(player.World) && player == player.World.LocalPlayer)
@@ -121,7 +122,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (info.SuppressNotifications)
 				return;
 
-			TextNotificationsManager.AddSystemLine(PlayerIsVictorious, Translation.Arguments("player", player.PlayerName));
+			TextNotificationsManager.AddSystemLine(PlayerIsVictorious, "player", player.ResolvedPlayerName);
 			Game.RunAfterDelay(info.NotificationDelay, () =>
 			{
 				if (Game.IsCurrentWorld(player.World) && player == player.World.LocalPlayer)

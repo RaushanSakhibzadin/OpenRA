@@ -16,13 +16,26 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 {
 	public class UnhardcodeSquadManager : UpdateRule, IBeforeUpdateActors
 	{
-		readonly List<MiniYamlNodeBuilder> addNodes = new();
+		readonly List<MiniYamlNodeBuilder> addNodes = [];
 
 		// Excludes AttackBomber and AttackTDGunboatTurreted as actors with these AttackBase traits aren't supposed to be controlled.
-		readonly string[] attackBase = { "AttackLeap", "AttackPopupTurreted", "AttackAircraft", "AttackTesla", "AttackCharges", "AttackFollow", "AttackTurreted", "AttackFrontal", "AttackGarrisoned", "AttackOmni", "AttackSwallow" };
-		readonly string[] vipsNames = { "Harvester", "BaseBuilding" };
-		readonly string[] buildings = { "Building", "EnergyWall", "D2kBuilding" };
-		readonly string[] excludedBuildings = { "LineBuild", "Plug" };
+		readonly string[] attackBase =
+		[
+			"AttackLeap",
+			"AttackPopupTurreted",
+			"AttackAircraft",
+			"AttackTesla",
+			"AttackCharges",
+			"AttackFollow",
+			"AttackTurreted",
+			"AttackFrontal",
+			"AttackGarrisoned",
+			"AttackOmni",
+			"AttackSwallow"
+		];
+		readonly string[] vipsNames = ["Harvester", "BaseBuilding"];
+		readonly string[] buildings = ["Building", "EnergyWall", "D2kBuilding"];
+		readonly string[] excludedBuildings = ["LineBuild", "Plug"];
 
 		public override string Name => "SquadManagerBotModule got new fields to configure ground attacks and defensive actions.";
 

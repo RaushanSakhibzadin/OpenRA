@@ -586,11 +586,11 @@ namespace OpenRA.Traits
 			IReadOnlyDictionary<string, string> values, string defaultValue, bool locked)
 		{
 			Id = id;
-			Name = map.GetLocalisedString(name);
-			Description = description != null ? map.GetLocalisedString(description).Replace(@"\n", "\n") : null;
+			Name = map.GetMessage(name);
+			Description = description != null ? map.GetMessage(description).Replace(@"\n", "\n") : null;
 			IsVisible = visible;
 			DisplayOrder = displayorder;
-			Values = values.ToDictionary(v => v.Key, v => map.GetLocalisedString(v.Value));
+			Values = values.ToDictionary(v => v.Key, v => map.GetMessage(v.Value));
 			DefaultValue = defaultValue;
 			IsLocked = locked;
 		}
@@ -628,16 +628,7 @@ namespace OpenRA.Traits
 	public interface IObservesVariablesInfo : ITraitInfoInterface { }
 
 	public delegate void VariableObserverNotifier(Actor self, IReadOnlyDictionary<string, int> variables);
-	public struct VariableObserver
-	{
-		public VariableObserverNotifier Notifier;
-		public IEnumerable<string> Variables;
-		public VariableObserver(VariableObserverNotifier notifier, IEnumerable<string> variables)
-		{
-			Notifier = notifier;
-			Variables = variables;
-		}
-	}
+	public readonly record struct VariableObserver(VariableObserverNotifier Notifier, IEnumerable<string> Variables);
 
 	public interface IObservesVariables
 	{
@@ -658,5 +649,14 @@ namespace OpenRA.Traits
 	{
 		bool CrushableBy(Actor self, Actor crusher, BitSet<CrushClass> crushClasses);
 		LongBitSet<PlayerBitMask> CrushableBy(Actor self, BitSet<CrushClass> crushClasses);
+	}
+
+	public interface IMapGeneratorInfo : ITraitInfoInterface
+	{
+		string Type { get; }
+		string Name { get; }
+		string MapTitle { get; }
+
+		Map Generate(ModData modData, MapGenerationArgs args);
 	}
 }

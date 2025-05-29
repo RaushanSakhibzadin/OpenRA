@@ -32,8 +32,8 @@ namespace OpenRA
 		/// You can remove inherited traits by adding a - in front of them as in -TraitName: to inherit everything, but this trait.
 		/// </summary>
 		public readonly string Name;
-		readonly TypeDictionary traits = new();
-		List<TraitInfo> constructOrderCache = null;
+		readonly TypeDictionary traits = [];
+		TraitInfo[] constructOrderCache = null;
 
 		public ActorInfo(ObjectCreator creator, string name, MiniYaml node)
 		{
@@ -162,7 +162,7 @@ namespace OpenRA
 				throw new YamlException(exceptionString);
 			}
 
-			constructOrderCache = resolved.ConvertAll(r => r.Trait);
+			constructOrderCache = resolved.Select(r => r.Trait).ToArray();
 			return constructOrderCache;
 		}
 

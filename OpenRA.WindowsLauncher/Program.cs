@@ -80,6 +80,7 @@ namespace OpenRA.WindowsLauncher
 			}
 			finally
 			{
+				// Flushing logs in finally block is okay here, as the catch block handles the exception.
 				Log.Dispose();
 			}
 		}
@@ -143,7 +144,7 @@ namespace OpenRA.WindowsLauncher
 				flags = SDL.SDL_MessageBoxFlags.SDL_MESSAGEBOX_ERROR,
 				title = "Fatal Error",
 				message = displayName + " has encountered a fatal error and must close.\nRefer to the crash logs and FAQ for more information.",
-				buttons = new[] { quit, viewFaq, viewLogs },
+				buttons = [quit, viewFaq, viewLogs],
 				numbuttons = 3
 			};
 

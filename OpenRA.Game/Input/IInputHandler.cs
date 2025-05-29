@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 
 namespace OpenRA
 {
@@ -22,25 +23,7 @@ namespace OpenRA
 	}
 
 	public enum MouseInputEvent { Down, Move, Up, Scroll }
-	public struct MouseInput
-	{
-		public MouseInputEvent Event;
-		public MouseButton Button;
-		public int2 Location;
-		public int2 Delta;
-		public Modifiers Modifiers;
-		public int MultiTapCount;
-
-		public MouseInput(MouseInputEvent ev, MouseButton button, int2 location, int2 delta, Modifiers mods, int multiTapCount)
-		{
-			Event = ev;
-			Button = button;
-			Location = location;
-			Delta = delta;
-			Modifiers = mods;
-			MultiTapCount = multiTapCount;
-		}
-	}
+	public record struct MouseInput(MouseInputEvent Event, MouseButton Button, int2 Location, int2 Delta, Modifiers Modifiers, int MultiTapCount);
 
 	[Flags]
 	public enum MouseButton
@@ -59,6 +42,33 @@ namespace OpenRA
 		Alt = 2,
 		Ctrl = 4,
 		Meta = 8,
+	}
+
+	public static class ModifiersExts
+	{
+		[FluentReference]
+		const string Cmd = "keycode-modifier.cmd";
+
+		[FluentReference(Traits.LintDictionaryReference.Values)]
+		public static readonly IReadOnlyDictionary<Modifiers, string> ModifierFluentKeys = new Dictionary<Modifiers, string>()
+		{
+			{ Modifiers.None, "keycode-modifier.none" },
+			{ Modifiers.Shift, "keycode-modifier.shift" },
+			{ Modifiers.Alt, "keycode-modifier.alt" },
+			{ Modifiers.Ctrl, "keycode-modifier.ctrl" },
+			{ Modifiers.Meta, "keycode-modifier.meta" },
+		};
+
+		public static string DisplayString(Modifiers m)
+		{
+			if (m == Modifiers.Meta && Platform.CurrentPlatform == PlatformType.OSX)
+				return FluentProvider.GetMessage(Cmd);
+
+			if (!ModifierFluentKeys.TryGetValue(m, out var fluentKey))
+				return m.ToString();
+
+			return FluentProvider.GetMessage(fluentKey);
+		}
 	}
 
 	public enum KeyInputEvent { Down, Up }

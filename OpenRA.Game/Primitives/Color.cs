@@ -77,13 +77,13 @@ namespace OpenRA.Primitives
 
 		static float SrgbToLinear(float c)
 		{
-			// Standard gamma conversion equation: see e.g. http://entropymine.com/imageworsener/srgbformula/
+			// Standard gamma conversion equation: see e.g. https://entropymine.com/imageworsener/srgbformula/
 			return c <= 0.04045f ? c / 12.92f : (float)Math.Pow((c + 0.055f) / 1.055f, 2.4f);
 		}
 
 		static float LinearToSrgb(float c)
 		{
-			// Standard gamma conversion equation: see e.g. http://entropymine.com/imageworsener/srgbformula/
+			// Standard gamma conversion equation: see e.g. https://entropymine.com/imageworsener/srgbformula/
 			return c <= 0.0031308f ? c * 12.92f : 1.055f * (float)Math.Pow(c, 1.0f / 2.4f) - 0.055f;
 		}
 
@@ -219,9 +219,9 @@ namespace OpenRA.Primitives
 		public override string ToString()
 		{
 			if (A == 255)
-				return CryptoUtil.ToHex(stackalloc byte[3] { R, G, B });
+				return CryptoUtil.ToHex([R, G, B]);
 
-			return CryptoUtil.ToHex(stackalloc byte[4] { R, G, B, A });
+			return CryptoUtil.ToHex([R, G, B, A]);
 		}
 
 		public static Color Transparent => FromArgb(0x00FFFFFF);

@@ -50,7 +50,7 @@ namespace OpenRA.Mods.Common.Traits
 		[CursorReference(dictionaryReference: LintDictionaryReference.Values)]
 		[Desc("Cursor overrides to display for specific terrain types.",
 			"A dictionary of [terrain type]: [cursor name].")]
-		public readonly Dictionary<string, string> TerrainCursors = new();
+		public readonly Dictionary<string, string> TerrainCursors = [];
 
 		[CursorReference]
 		[Desc("Cursor to display when a move order cannot be issued at target location.")]
@@ -127,7 +127,8 @@ namespace OpenRA.Mods.Common.Traits
 		/// <summary>
 		/// Note: If the target <paramref name="cell"/> has any free subcell, the value of <paramref name="subCell"/> is ignored.
 		/// </summary>
-		public bool CanEnterCell(World world, Actor self, CPos cell, SubCell subCell = SubCell.FullCell, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
+		public bool CanEnterCell(World world, Actor self, CPos cell,
+			SubCell subCell = SubCell.FullCell, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
 		{
 			// PERF: Avoid repeated trait queries on the hot path
 			locomotor ??= world.WorldActor.TraitsImplementing<Locomotor>()
@@ -217,6 +218,7 @@ namespace OpenRA.Mods.Common.Traits
 		public bool IsBlocking { get; private set; }
 
 		public bool IsMovingBetweenCells => FromCell != ToCell;
+		public MoveResult MoveResult { get; set; }
 
 		#region IFacing
 
@@ -253,13 +255,13 @@ namespace OpenRA.Mods.Common.Traits
 		public (CPos, SubCell)[] OccupiedCells()
 		{
 			if (FromCell == ToCell)
-				return new[] { (FromCell, FromSubCell) };
+				return [(FromCell, FromSubCell)];
 
 			// HACK: Should be fixed properly, see https://github.com/OpenRA/OpenRA/pull/17292 for an explanation
 			if (Info.LocomotorInfo.SharesCell)
-				return new[] { (ToCell, ToSubCell) };
+				return [(ToCell, ToSubCell)];
 
-			return new[] { (FromCell, FromSubCell), (ToCell, ToSubCell) };
+			return [(FromCell, FromSubCell), (ToCell, ToSubCell)];
 		}
 		#endregion
 
@@ -470,8 +472,10 @@ namespace OpenRA.Mods.Common.Traits
 			var position = cell.Layer == 0 ? self.World.Map.CenterOfCell(cell) :
 				self.World.GetCustomMovementLayers()[cell.Layer].CenterOfCell(cell);
 
-			var subcellOffset = self.World.Map.Grid.OffsetOfSubCell(subCell);
-			SetCenterPosition(self, position + subcellOffset);
+			position += self.World.Map.Grid.OffsetOfSubCell(subCell);
+			position -= new WVec(0, 0, self.World.Map.DistanceAboveTerrain(position).Length);
+
+			SetCenterPosition(self, position);
 			FinishedMoving(self);
 		}
 
@@ -794,7 +798,7 @@ namespace OpenRA.Mods.Common.Traits
 			CrushAction(self, (notifyCrushed) => notifyCrushed.WarnCrush);
 		}
 
-		public Activity MoveTo(Func<BlockedByActor, List<CPos>> pathFunc) { return new Move(self, pathFunc); }
+		public Activity MoveTo(Func<BlockedByActor, (bool AlreadyAtDestination, List<CPos> Path)> pathFunc) { return new Move(self, pathFunc); }
 
 		Activity LocalMove(Actor self, WPos fromPos, WPos toPos, CPos cell)
 		{
@@ -815,7 +819,7 @@ namespace OpenRA.Mods.Common.Traits
 				return above;
 
 			var path = PathFinder.FindPathToTargetCellByPredicate(
-				self, new[] { self.Location }, loc => loc.Layer == 0 && CanEnterCell(loc), BlockedByActor.All);
+				self, [self.Location], loc => loc.Layer == 0 && CanEnterCell(loc), BlockedByActor.All);
 
 			if (path.Count > 0)
 				return path[0];
@@ -995,6 +999,23 @@ namespace OpenRA.Mods.Common.Traits
 				if (rallyPoint != null)
 					foreach (var cell in rallyPoint)
 						QueueChild(new AttackMoveActivity(self, () => mobile.MoveTo(cell, 1, evaluateNearestMovableCell: true, targetLineColor: Color.OrangeRed)));
+			}
+
+			public override IEnumerable<Target> GetTargets(Actor self)
+			{
+				if (ChildActivity != null)
+					return ChildActivity.GetTargets(self);
+
+				return Target.None;
+			}
+
+			public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+			{
+				var a = ChildActivity;
+				for (; a != null; a = a.NextActivity)
+					if (!a.IsCanceling)
+						foreach (var n in a.TargetLineNodes(self))
+							yield return n;
 			}
 		}
 

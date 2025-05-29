@@ -21,6 +21,7 @@ namespace OpenRA.Mods.Common.Traits
 	public class StrategicPoint { }
 
 	[Desc("Allows King of the Hill (KotH) style gameplay.")]
+	[IncludeStaticFluentReferences(typeof(StrategicVictoryConditions))]
 	public class StrategicVictoryConditionsInfo : TraitInfo, Requires<MissionObjectivesInfo>
 	{
 		[Desc("Amount of time (in game ticks) that the player has to hold all the strategic points.", "Defaults to 7500 ticks (5 minutes at default speed).")]
@@ -46,10 +47,10 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class StrategicVictoryConditions : ITick, ISync, INotifyWinStateChanged, INotifyTimeLimit
 	{
-		[TranslationReference("player")]
+		[FluentReference("player")]
 		const string PlayerIsVictorious = "notification-player-is-victorious";
 
-		[TranslationReference("player")]
+		[FluentReference("player")]
 		const string PlayerIsDefeated = "notification-player-is-defeated";
 
 		readonly StrategicVictoryConditionsInfo info;
@@ -151,7 +152,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (info.SuppressNotifications)
 				return;
 
-			TextNotificationsManager.AddSystemLine(PlayerIsDefeated, Translation.Arguments("player", player.PlayerName));
+			TextNotificationsManager.AddSystemLine(PlayerIsDefeated, "player", player.ResolvedPlayerName);
 			Game.RunAfterDelay(info.NotificationDelay, () =>
 			{
 				if (Game.IsCurrentWorld(player.World) && player == player.World.LocalPlayer)
@@ -167,7 +168,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (info.SuppressNotifications)
 				return;
 
-			TextNotificationsManager.AddSystemLine(PlayerIsVictorious, Translation.Arguments("player", player.PlayerName));
+			TextNotificationsManager.AddSystemLine(PlayerIsVictorious, "player", player.ResolvedPlayerName);
 			Game.RunAfterDelay(info.NotificationDelay, () =>
 			{
 				if (Game.IsCurrentWorld(player.World) && player == player.World.LocalPlayer)

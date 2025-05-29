@@ -35,7 +35,7 @@ namespace OpenRA.Mods.Common.Traits
 		[ActorReference(dictionaryReference: LintDictionaryReference.Keys)]
 		[Desc("Conditions to grant when this actor is loaded inside specified transport.",
 			"A dictionary of [actor name]: [condition].")]
-		public readonly Dictionary<string, string> CargoConditions = new();
+		public readonly Dictionary<string, string> CargoConditions = [];
 
 		[GrantedConditionReference]
 		public IEnumerable<string> LinterCargoConditions => CargoConditions.Values;
@@ -61,7 +61,8 @@ namespace OpenRA.Mods.Common.Traits
 		public override object Create(ActorInitializer init) { return new Passenger(this); }
 	}
 
-	public class Passenger : IIssueOrder, IResolveOrder, IOrderVoice, INotifyRemovedFromWorld, INotifyEnteredCargo, INotifyExitedCargo, INotifyKilled, IObservesVariables
+	public class Passenger : IIssueOrder, IResolveOrder, IOrderVoice,
+		INotifyRemovedFromWorld, INotifyEnteredCargo, INotifyExitedCargo, INotifyKilled, IObservesVariables
 	{
 		public readonly PassengerInfo Info;
 		public Actor Transport;

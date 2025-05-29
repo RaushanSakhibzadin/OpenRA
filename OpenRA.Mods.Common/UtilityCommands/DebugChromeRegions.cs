@@ -74,14 +74,17 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				}
 			}
 
-			var output = HtmlTemplate.JoinWith("\n").FormatInvariant(zoom, Convert.ToBase64String(modData.ModFiles.Open(image).ReadAllBytes()), "[" + regions.JoinWith(",") + "]");
+			var output = HtmlTemplate.JoinWith("\n").FormatInvariant(
+				zoom,
+				Convert.ToBase64String(modData.ModFiles.Open(image).ReadAllBytes()),
+				"[" + regions.JoinWith(",") + "]");
 			var outputPath = Path.ChangeExtension(image, ".html");
-			File.WriteAllLines(outputPath, new[] { output });
+			File.WriteAllLines(outputPath, [output]);
 			Console.WriteLine("Saved {0}", outputPath);
 		}
 
 		static readonly string[] HtmlTemplate =
-		{
+		[
 			"<!DOCTYPE html>",
 			"<html>",
 			"<head>",
@@ -134,6 +137,6 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			"</script>",
 			"</body>",
 			"</html>",
-		};
+		];
 	}
 }

@@ -10,6 +10,7 @@
 #endregion
 
 using System.Collections.Generic;
+using OpenRA.Mods.Common.MapGenerator;
 
 namespace OpenRA.Mods.Common.Terrain
 {
@@ -17,6 +18,7 @@ namespace OpenRA.Mods.Common.Terrain
 	{
 		string[] EditorTemplateOrder { get; }
 		IReadOnlyDictionary<ushort, TerrainTemplateInfo> Templates { get; }
+		IReadOnlyDictionary<string, IEnumerable<MultiBrushInfo>> MultiBrushCollections { get; }
 	}
 
 	public interface ITerrainInfoNotifyMapCreated : ITerrainInfo
@@ -45,10 +47,13 @@ namespace OpenRA.Mods.Common.Terrain
 				foreach (var node in nodes)
 				{
 					if (!int.TryParse(node.Key, out var key))
-						throw new YamlException($"Tileset `{terrainInfo.Id}` template `{Id}` defines a frame `{node.Key}` that is not a valid integer.");
+						throw new YamlException(
+							$"Tileset `{terrainInfo.Id}` template `{Id}` defines a frame `{node.Key}` that is not a valid integer.");
 
 					if (key < 0 || key >= tileInfo.Length)
-						throw new YamlException($"Tileset `{terrainInfo.Id}` template `{Id}` references frame {key}, but only [0..{tileInfo.Length - 1}] are valid for a {Size.X}x{Size.Y} Size template.");
+						throw new YamlException(
+							$"Tileset `{terrainInfo.Id}` template `{Id}` references frame {key}, " +
+							$"but only [0..{tileInfo.Length - 1}] are valid for a {Size.X}x{Size.Y} Size template.");
 
 					tileInfo[key] = LoadTileInfo(terrainInfo, node.Value);
 				}

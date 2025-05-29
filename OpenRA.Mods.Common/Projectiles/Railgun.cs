@@ -28,7 +28,10 @@ namespace OpenRA.Mods.Common.Projectiles
 		[Desc("The maximum/constant/incremental inaccuracy used in conjunction with the InaccuracyType property.")]
 		public readonly WDist Inaccuracy = WDist.Zero;
 
-		[Desc("Controls the way inaccuracy is calculated. Possible values are 'Maximum' - scale from 0 to max with range, 'PerCellIncrement' - scale from 0 with range and 'Absolute' - use set value regardless of range.")]
+		[Desc("Controls the way inaccuracy is calculated. Possible values are " +
+			"'Maximum' - scale from 0 to max with range, " +
+			"'PerCellIncrement' - scale from 0 with range, " +
+			"'Absolute' - use set value regardless of range.")]
 		public readonly InaccuracyType InaccuracyType = InaccuracyType.Maximum;
 
 		[Desc("Can this projectile be blocked when hitting actors with an IBlocksProjectiles trait.")]
@@ -95,8 +98,8 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		public IProjectile Create(ProjectileArgs args)
 		{
-			var bc = BeamPlayerColor ? Color.FromArgb(BeamColor.A, args.SourceActor.Owner.Color) : BeamColor;
-			var hc = HelixPlayerColor ? Color.FromArgb(HelixColor.A, args.SourceActor.Owner.Color) : HelixColor;
+			var bc = BeamPlayerColor ? Color.FromArgb(BeamColor.A, args.SourceActor.OwnerColor()) : BeamColor;
+			var hc = HelixPlayerColor ? Color.FromArgb(HelixColor.A, args.SourceActor.OwnerColor()) : HelixColor;
 			return new Railgun(args, this, bc, hc);
 		}
 	}

@@ -16,6 +16,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[TraitLocation(SystemActors.World)]
+	[IncludeStaticFluentReferences(typeof(ExitsDebugOverlayManager))]
 	public class ExitsDebugOverlayManagerInfo : TraitInfo
 	{
 		[Desc("The font used to draw cell vectors. Should match the value as-is in the Fonts section of the mod manifest (do not convert to lowercase).")]
@@ -28,7 +29,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		const string CommandName = "exits-overlay";
 
-		[TranslationReference]
+		[FluentReference]
 		const string CommandDescription = "description-exits-overlay";
 
 		public readonly SpriteFont Font;

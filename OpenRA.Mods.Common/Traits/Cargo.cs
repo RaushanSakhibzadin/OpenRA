@@ -14,7 +14,6 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Orders;
-using OpenRA.Mods.Common.Widgets;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
@@ -27,10 +26,10 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int MaxWeight = 0;
 
 		[Desc("`Passenger.CargoType`s that can be loaded into this actor.")]
-		public readonly HashSet<string> Types = new();
+		public readonly HashSet<string> Types = [];
 
 		[Desc("A list of actor types that are initially spawned into this actor.")]
-		public readonly string[] InitialUnits = Array.Empty<string>();
+		public readonly string[] InitialUnits = [];
 
 		[Desc("When this actor is sold should all of its passengers be unloaded?")]
 		public readonly bool EjectOnSell = true;
@@ -39,7 +38,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly bool EjectOnDeath = false;
 
 		[Desc("Terrain types that this actor is allowed to eject actors onto. Leave empty for all terrain types.")]
-		public readonly HashSet<string> UnloadTerrainTypes = new();
+		public readonly HashSet<string> UnloadTerrainTypes = [];
 
 		[VoiceReference]
 		[Desc("Voice to play when ordered to unload the passengers.")]
@@ -80,7 +79,7 @@ namespace OpenRA.Mods.Common.Traits
 		[ActorReference(dictionaryReference: LintDictionaryReference.Keys)]
 		[Desc("Conditions to grant when specified actors are loaded inside the transport.",
 			"A dictionary of [actor name]: [condition].")]
-		public readonly Dictionary<string, string> PassengerConditions = new();
+		public readonly Dictionary<string, string> PassengerConditions = [];
 
 		[GrantedConditionReference]
 		public IEnumerable<string> LinterPassengerConditions => PassengerConditions.Values;
@@ -93,9 +92,9 @@ namespace OpenRA.Mods.Common.Traits
 		INotifyCreated, INotifyKilled, ITransformActorInitModifier
 	{
 		readonly Actor self;
-		readonly List<Actor> cargo = new();
-		readonly HashSet<Actor> reserves = new();
-		readonly Dictionary<string, Stack<int>> passengerTokens = new();
+		readonly List<Actor> cargo = [];
+		readonly HashSet<Actor> reserves = [];
+		readonly Dictionary<string, Stack<int>> passengerTokens = [];
 		readonly Lazy<IFacing> facing;
 		readonly bool checkTerrainType;
 
@@ -103,13 +102,9 @@ namespace OpenRA.Mods.Common.Traits
 		int reservedWeight = 0;
 		Aircraft aircraft;
 		int loadingToken = Actor.InvalidConditionToken;
-		readonly Stack<int> loadedTokens = new();
+		readonly Stack<int> loadedTokens = [];
 		bool takeOffAfterLoad;
 		bool initialised;
-
-		readonly CachedTransform<CPos, CPos[]> currentAdjacentCells;
-
-		public CPos[] CurrentAdjacentCells => currentAdjacentCells.Update(self.Location);
 
 		public IEnumerable<Actor> Passengers => cargo;
 		public int PassengerCount => cargo.Count;
@@ -123,39 +118,36 @@ namespace OpenRA.Mods.Common.Traits
 			self = init.Self;
 			checkTerrainType = info.UnloadTerrainTypes.Count > 0;
 
-			currentAdjacentCells = new CachedTransform<CPos, CPos[]>(loc =>
-				Util.AdjacentCells(self.World, Target.FromActor(self)).Where(c => loc != c).ToArray());
-
 			var runtimeCargoInit = init.GetOrDefault<RuntimeCargoInit>(info);
 			var cargoInit = init.GetOrDefault<CargoInit>(info);
 			if (runtimeCargoInit != null)
 			{
 				cargo = runtimeCargoInit.Value.ToList();
-				totalWeight = cargo.Sum(c => GetWeight(c));
+				totalWeight = cargo.Sum(GetWeight);
 			}
 			else if (cargoInit != null)
 			{
 				foreach (var u in cargoInit.Value)
 				{
 					var unit = self.World.CreateActor(false, u.ToLowerInvariant(),
-						new TypeDictionary { new OwnerInit(self.Owner) });
+						[new OwnerInit(self.Owner)]);
 
 					cargo.Add(unit);
 				}
 
-				totalWeight = cargo.Sum(c => GetWeight(c));
+				totalWeight = cargo.Sum(GetWeight);
 			}
 			else
 			{
 				foreach (var u in info.InitialUnits)
 				{
 					var unit = self.World.CreateActor(false, u.ToLowerInvariant(),
-						new TypeDictionary { new OwnerInit(self.Owner) });
+						[new OwnerInit(self.Owner)]);
 
 					cargo.Add(unit);
 				}
 
-				totalWeight = cargo.Sum(c => GetWeight(c));
+				totalWeight = cargo.Sum(GetWeight);
 			}
 
 			facing = Exts.Lazy(self.TraitOrDefault<IFacing>);
@@ -234,6 +226,11 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
+		public IEnumerable<CPos> CurrentAdjacentCells()
+		{
+			return Util.AdjacentCells(self.World, Target.FromActor(self)).Where(c => self.Location != c);
+		}
+
 		public bool CanUnload(BlockedByActor check = BlockedByActor.None)
 		{
 			if (IsTraitDisabled)
@@ -249,7 +246,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			return !IsEmpty() && (aircraft == null || aircraft.CanLand(self.Location, blockedByMobile: false))
-				&& CurrentAdjacentCells != null && CurrentAdjacentCells.Any(c => Passengers.Any(p => !p.IsDead && p.Trait<IPositionable>().CanEnterCell(c, null, check)));
+				&& CurrentAdjacentCells().Any(c => Passengers.Any(p => !p.IsDead && p.Trait<IPositionable>().CanEnterCell(c, null, check)));
 		}
 
 		public bool CanLoad(Actor a)
@@ -334,11 +331,11 @@ namespace OpenRA.Mods.Common.Traits
 		public bool HasSpace(int weight) { return totalWeight + reservedWeight + weight <= Info.MaxWeight; }
 		public bool IsEmpty() { return cargo.Count == 0; }
 
-		public Actor Peek() { return cargo.Last(); }
+		public Actor Peek() { return cargo[^1]; }
 
 		public Actor Unload(Actor self, Actor passenger = null)
 		{
-			passenger ??= cargo.Last();
+			passenger ??= cargo[^1];
 			if (!cargo.Remove(passenger))
 				throw new ArgumentException("Attempted to unload an actor that is not a passenger.");
 
@@ -411,7 +408,9 @@ namespace OpenRA.Mods.Common.Traits
 		void INotifyKilled.Killed(Actor self, AttackInfo e)
 		{
 			// IsAtGroundLevel contains Map.Contains(self.Location) check.
-			if (Info.EjectOnDeath && self.IsAtGroundLevel() && (!checkTerrainType || Info.UnloadTerrainTypes.Contains(self.World.Map.GetTerrainInfo(self.Location).Type)))
+			if (Info.EjectOnDeath &&
+				self.IsAtGroundLevel() &&
+				(!checkTerrainType || Info.UnloadTerrainTypes.Contains(self.World.Map.GetTerrainInfo(self.Location).Type)))
 			{
 				while (!IsEmpty())
 				{

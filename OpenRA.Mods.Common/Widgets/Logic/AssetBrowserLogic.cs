@@ -35,10 +35,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			Unknown = 16
 		}
 
-		[TranslationReference("length")]
+		[FluentReference("length")]
 		const string LengthInSeconds = "label-length-in-seconds";
 
-		[TranslationReference]
+		[FluentReference]
 		const string AllPackages = "label-all-packages";
 
 		readonly string[] allowedExtensions;
@@ -96,7 +96,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			this.modData = modData;
 			panel = widget;
 
-			allPackages = TranslationProvider.GetString(AllPackages);
+			allPackages = FluentProvider.GetMessage(AllPackages);
 
 			var colorPickerPalettes = world.WorldActor.TraitsImplementing<IProvidesAssetBrowserColorPickerPalettes>()
 				.SelectMany(p => p.ColorPickerPaletteNames)
@@ -191,7 +191,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			}
 
 			filenameInput = panel.Get<TextFieldWidget>("FILENAME_INPUT");
-			filenameInput.OnTextEdited = () => ApplyFilter();
+			filenameInput.OnTextEdited = ApplyFilter;
 			filenameInput.OnEscKey = _ =>
 			{
 				if (string.IsNullOrEmpty(filenameInput.Text))
@@ -238,7 +238,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			if (frameText != null)
 			{
 				var soundLength = new CachedTransform<double, string>(p =>
-					TranslationProvider.GetString(LengthInSeconds, Translation.Arguments("length", Math.Round(p, 3))));
+					FluentProvider.GetMessage(LengthInSeconds, "length", Math.Round(p, 3)));
 
 				frameText.GetText = () =>
 				{
@@ -431,7 +431,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				currentFrame = currentSprites.Length - 1;
 		}
 
-		readonly Dictionary<string, bool> assetVisByName = new();
+		readonly Dictionary<string, bool> assetVisByName = [];
 
 		bool FilterAsset(string filename)
 		{
@@ -471,11 +471,17 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			item.IsVisible = () =>
 			{
-				var allowed = (assetTypesToDisplay.HasFlag(AssetType.Sprite) && allowedSpriteExtensions.Any(ext => filepath.EndsWith(ext, true, CultureInfo.InvariantCulture)))
-					|| (assetTypesToDisplay.HasFlag(AssetType.Model) && allowedModelExtensions.Any(ext => filepath.EndsWith(ext, true, CultureInfo.InvariantCulture)))
-					|| (assetTypesToDisplay.HasFlag(AssetType.Audio) && allowedAudioExtensions.Any(ext => filepath.EndsWith(ext, true, CultureInfo.InvariantCulture)))
-					|| (assetTypesToDisplay.HasFlag(AssetType.Video) && allowedVideoExtensions.Any(ext => filepath.EndsWith(ext, true, CultureInfo.InvariantCulture)))
-					|| (assetTypesToDisplay.HasFlag(AssetType.Unknown) && !allowedExtensions.Any(ext => filepath.EndsWith(ext, true, CultureInfo.InvariantCulture)));
+				var allowed =
+					(assetTypesToDisplay.HasFlag(AssetType.Sprite)
+						&& allowedSpriteExtensions.Any(ext => filepath.EndsWith(ext, true, CultureInfo.InvariantCulture)))
+					|| (assetTypesToDisplay.HasFlag(AssetType.Model)
+						&& allowedModelExtensions.Any(ext => filepath.EndsWith(ext, true, CultureInfo.InvariantCulture)))
+					|| (assetTypesToDisplay.HasFlag(AssetType.Audio)
+						&& allowedAudioExtensions.Any(ext => filepath.EndsWith(ext, true, CultureInfo.InvariantCulture)))
+					|| (assetTypesToDisplay.HasFlag(AssetType.Video)
+						&& allowedVideoExtensions.Any(ext => filepath.EndsWith(ext, true, CultureInfo.InvariantCulture)))
+					|| (assetTypesToDisplay.HasFlag(AssetType.Unknown)
+						&& !allowedExtensions.Any(ext => filepath.EndsWith(ext, true, CultureInfo.InvariantCulture)));
 
 				if (assetVisByName.TryGetValue(filepath, out var visible))
 					return visible && allowed;
@@ -615,7 +621,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			if (assetSource != null)
 				foreach (var content in assetSource.Contents)
-					files.Add(content, new List<IReadOnlyPackage> { assetSource });
+					files.Add(content, [assetSource]);
 			else
 			{
 				foreach (var mountedPackage in modData.ModFiles.MountedPackages)
@@ -623,7 +629,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					foreach (var content in mountedPackage.Contents)
 					{
 						if (!files.TryGetValue(content, out var list))
-							files.Add(content, new List<IReadOnlyPackage> { mountedPackage });
+							files.Add(content, [mountedPackage]);
 						else
 							list.Add(mountedPackage);
 					}
@@ -732,13 +738,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		Widget CreateAssetTypesPanel()
 		{
-			var assetTypesPanel = Ui.LoadWidget("ASSET_TYPES_PANEL", null, new WidgetArgs());
+			var assetTypesPanel = Ui.LoadWidget("ASSET_TYPES_PANEL", null, []);
 			var assetTypeTemplate = assetTypesPanel.Get<CheckboxWidget>("ASSET_TYPE_TEMPLATE");
 
 			var allAssetTypes = new[] { AssetType.Sprite, AssetType.Model, AssetType.Audio, AssetType.Video, AssetType.Unknown };
 			foreach (var type in allAssetTypes)
 			{
-				var assetType = (CheckboxWidget)assetTypeTemplate.Clone();
+				var assetType = assetTypeTemplate.Clone();
 				var text = type.ToString();
 				assetType.GetText = () => text;
 				assetType.IsChecked = () => assetTypesToDisplay.HasFlag(type);

@@ -22,30 +22,36 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("Calculates routes for mobile actors with locomotors based on the A* search algorithm.", " Attach this to the world actor.")]
 	public class PathFinderInfo : TraitInfo, Requires<LocomotorInfo>, Requires<ActorMapInfo>
 	{
+		[Desc(
+			"The search will aim for the shortest path when given a weight of 100%.",
+			"We can allow the search to find paths that aren't optimal by changing the weight.",
+			"The weight limits the worst case length of the path, " +
+			"e.g. a weight of 110% will find a path no more than 10% longer than the shortest possible." +
+			"The benefit of allowing the search to return suboptimal paths is faster computation time." +
+			"The search can skip some areas of the search space, meaning it has less work to do." +
+			"Defaults to 125%.")]
+		public int HeuristicWeightPercentage = 125;
+
 		public override object Create(ActorInitializer init)
 		{
-			return new PathFinder(init.Self);
+			return new PathFinder(init.Self, this);
 		}
 	}
 
 	public class PathFinder : IPathFinder, IWorldLoaded
 	{
-		public static readonly List<CPos> NoPath = new(0);
-
-		/// <summary>
-		/// When searching for paths, use a default weight of 125% to reduce
-		/// computation effort - even if this means paths may be sub-optimal.
-		/// </summary>
-		const int DefaultHeuristicWeightPercentage = 125;
+		public static readonly List<CPos> NoPath = [];
 
 		readonly World world;
+		readonly PathFinderInfo info;
 		PathFinderOverlay pathFinderOverlay;
 		Dictionary<Locomotor, HierarchicalPathFinder> hierarchicalPathFindersBlockedByNoneByLocomotor;
 		Dictionary<Locomotor, HierarchicalPathFinder> hierarchicalPathFindersBlockedByImmovableByLocomotor;
 
-		public PathFinder(Actor self)
+		public PathFinder(Actor self, PathFinderInfo info)
 		{
 			world = self.World;
+			this.info = info;
 		}
 
 		public (
@@ -94,7 +100,7 @@ namespace OpenRA.Mods.Common.Traits
 			Actor ignoreActor = null,
 			bool laneBias = true)
 		{
-			return FindPathToTarget(self, sources.ToList(), target, check, customCost, ignoreActor, laneBias);
+			return FindPathToTarget(self, sources.ToList(), target, check, customCost, ignoreActor, false, laneBias);
 		}
 
 		/// <summary>
@@ -149,7 +155,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (sourceIsAccessible)
 			{
 				// As both ends are accessible, we can freely swap them.
-				path = FindPathToTarget(self, targetsList, source, check, customCost, ignoreActor, laneBias);
+				path = FindPathToTarget(self, targetsList, source, check, customCost, ignoreActor, true, laneBias);
 			}
 			else
 			{
@@ -159,7 +165,7 @@ namespace OpenRA.Mods.Common.Traits
 				// but the local pathfinder can deal with it when doing reverse searches.
 				pathFinderOverlay?.NewRecording(self, accessibleTargets, source);
 				using (var search = PathSearch.ToTargetCell(
-					world, locomotor, self, accessibleTargets, source, check, DefaultHeuristicWeightPercentage,
+					world, locomotor, self, accessibleTargets, source, check, HeuristicWeightPercentage,
 					customCost, ignoreActor, laneBias, inReverse: true, recorder: pathFinderOverlay?.RecordLocalEdges(self)))
 					path = search.FindPath();
 			}
@@ -171,7 +177,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		List<CPos> FindPathToTarget(
 			Actor self, List<CPos> sources, CPos target, BlockedByActor check,
-			Func<CPos, int> customCost, Actor ignoreActor, bool laneBias)
+			Func<CPos, int> customCost, Actor ignoreActor, bool inReverse, bool laneBias)
 		{
 			if (sources.Count == 0)
 				return NoPath;
@@ -181,7 +187,7 @@ namespace OpenRA.Mods.Common.Traits
 			// If the target cell is inaccessible, bail early.
 			// The destination cell must allow movement and also have a reachable movement cost.
 			if (!PathSearch.CellAllowsMovement(self.World, locomotor, target, customCost)
-				|| locomotor.MovementCostToEnterCell(self, target, check, ignoreActor) == PathGraph.MovementCostForUnreachableCell)
+				|| locomotor.MovementCostToEnterCell(self, target, check, ignoreActor, inReverse) == PathGraph.MovementCostForUnreachableCell)
 				return NoPath;
 
 			// When searching from only one source cell, some optimizations are possible.
@@ -196,17 +202,17 @@ namespace OpenRA.Mods.Common.Traits
 					// Unlike the destination cell, the source cell is allowed to have an unreachable movement cost.
 					if (!PathSearch.CellAllowsMovement(self.World, locomotor, source, customCost))
 						return NoPath;
-					return new List<CPos>(2) { target, source };
+					return [target, source];
 				}
 
 				// Use a hierarchical path search, which performs a guided bidirectional search.
 				return GetHierarchicalPathFinder(locomotor, check, ignoreActor).FindPath(
-					self, source, target, check, DefaultHeuristicWeightPercentage, customCost, ignoreActor, laneBias, pathFinderOverlay);
+					self, source, target, check, HeuristicWeightPercentage, customCost, ignoreActor, inReverse, laneBias, pathFinderOverlay);
 			}
 
 			// Use a hierarchical path search, which performs a guided unidirectional search.
 			return GetHierarchicalPathFinder(locomotor, check, ignoreActor).FindPath(
-				self, sources, target, check, DefaultHeuristicWeightPercentage, customCost, ignoreActor, laneBias, pathFinderOverlay);
+				self, sources, target, check, HeuristicWeightPercentage, customCost, ignoreActor, inReverse, laneBias, pathFinderOverlay);
 		}
 
 		HierarchicalPathFinder GetHierarchicalPathFinder(Locomotor locomotor, BlockedByActor check, Actor ignoreActor)
@@ -258,11 +264,32 @@ namespace OpenRA.Mods.Common.Traits
 			return hierarchicalPathFindersBlockedByNoneByLocomotor[locomotor].PathExists(source, target);
 		}
 
+		/// <summary>
+		/// Determines if a path exists between source and target.
+		/// Terrain and a *subset* of immovable actors are taken into account,
+		/// i.e. as if a subset of <see cref="BlockedByActor.Immovable"/> was given.
+		/// This would apply for any actor using the given <see cref="Locomotor"/>.
+		/// </summary>
+		/// <remarks>
+		/// It is allowed for an actor to occupy an inaccessible space and move out of it if another adjacent cell is
+		/// accessible, but it is not allowed to move into an inaccessible target space. Therefore it is vitally
+		/// important to not mix up the source and target locations. A path can exist from an inaccessible source space
+		/// to an accessible target space, but if those parameters as swapped then no path can exist.
+		/// As only a subset of immovable actors are taken into account,
+		/// this method can return false positives, indicating a path might exist where none is possible.
+		/// </remarks>
+		public bool PathMightExistForLocomotorBlockedByImmovable(Locomotor locomotor, CPos source, CPos target)
+		{
+			return hierarchicalPathFindersBlockedByImmovableByLocomotor[locomotor].PathExists(source, target);
+		}
+
 		static Locomotor GetActorLocomotor(Actor self)
 		{
 			// PERF: This PathFinder trait requires the use of Mobile, so we can be sure that is in use.
 			// We can save some performance by avoiding querying for the Locomotor trait and retrieving it from Mobile.
 			return ((Mobile)self.OccupiesSpace).Locomotor;
 		}
+
+		int HeuristicWeightPercentage => Math.Max(100, info.HeuristicWeightPercentage);
 	}
 }

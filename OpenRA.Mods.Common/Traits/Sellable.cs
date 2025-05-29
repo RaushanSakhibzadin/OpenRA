@@ -24,13 +24,13 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int RefundPercent = 50;
 
 		[Desc("List of audio clips to play when the actor is being sold.")]
-		public readonly string[] SellSounds = Array.Empty<string>();
+		public readonly string[] SellSounds = [];
 
 		[NotificationReference("Speech")]
 		[Desc("Speech notification to play.")]
 		public readonly string Notification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		[Desc("Text notification to display.")]
 		public readonly string TextNotification = null;
 
@@ -61,7 +61,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			this.self = self;
 			this.info = info;
-			health = Exts.Lazy(() => self.TraitOrDefault<IHealth>());
+			health = Exts.Lazy(self.TraitOrDefault<IHealth>);
 		}
 
 		public void ResolveOrder(Actor self, Order order)

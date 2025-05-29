@@ -22,11 +22,11 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		[Desc("Actor types that can capture other actors (via `Captures`).",
 			"Leave this empty to disable capturing.")]
-		public readonly HashSet<string> CapturingActorTypes = new();
+		public readonly HashSet<string> CapturingActorTypes = [];
 
 		[Desc("Actor types that can be targeted for capturing.",
 			"Leave this empty to include all actors.")]
-		public readonly HashSet<string> CapturableActorTypes = new();
+		public readonly HashSet<string> CapturableActorTypes = [];
 
 		[Desc("Minimum delay (in ticks) between trying to capture with CapturingActorTypes.")]
 		public readonly int MinimumCaptureDelay = 375;
@@ -53,9 +53,9 @@ namespace OpenRA.Mods.Common.Traits
 		int minCaptureDelayTicks;
 
 		// Units that the bot already knows about and has given a capture order. Any unit not on this list needs to be given a new order.
-		readonly List<Actor> activeCapturers = new();
+		readonly List<Actor> activeCapturers = [];
 
-		readonly ActorIndex.OwnerAndNamesAndTrait<Captures> capturingActors;
+		readonly ActorIndex.OwnerAndNamesAndTrait<CapturesInfo> capturingActors;
 
 		public CaptureManagerBotModule(Actor self, CaptureManagerBotModuleInfo info)
 			: base(info)
@@ -70,7 +70,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			maximumCaptureTargetOptions = Math.Max(1, Info.MaximumCaptureTargetOptions);
 
-			capturingActors = new ActorIndex.OwnerAndNamesAndTrait<Captures>(world, Info.CapturingActorTypes, player);
+			capturingActors = new ActorIndex.OwnerAndNamesAndTrait<CapturesInfo>(world, Info.CapturingActorTypes, player);
 		}
 
 		protected override void TraitEnabled(Actor self)

@@ -19,17 +19,17 @@ namespace OpenRA.Mods.Cnc.Graphics
 {
 	sealed class TeslaZapRenderable : IPalettedRenderable, IFinalizedRenderable
 	{
-		static readonly int[][] Steps = new[]
-		{
-			new int[] { 8, 8, 4, 4, 0 },
-			new int[] { -8, -8, -4, -4, 0 },
-			new int[] { 8, 0, 4, 4, 1 },
-			new int[] { -8, 0, -4, 4, 1 },
-			new int[] { 0, 8, 4, 4, 2 },
-			new int[] { 0, -8, 4, -4, 2 },
-			new int[] { -8, 8, -4, 4, 3 },
-			new int[] { 8, -8, 4, -4, 3 }
-		};
+		static readonly int[][] Steps =
+		[
+			[8, 8, 4, 4, 0],
+			[-8, -8, -4, -4, 0],
+			[8, 0, 4, 4, 1],
+			[-8, 0, -4, 4, 1],
+			[0, 8, 4, 4, 2],
+			[0, -8, 4, -4, 2],
+			[-8, 8, -4, 4, 3],
+			[8, -8, 4, -4, 3]
+		];
 		readonly WVec length;
 		readonly string image;
 		readonly string palette;
@@ -41,7 +41,11 @@ namespace OpenRA.Mods.Cnc.Graphics
 		readonly WVec cachedLength;
 		IEnumerable<IFinalizedRenderable> cache;
 
-		public TeslaZapRenderable(WPos pos, int zOffset, in WVec length, string image, string brightSequence, int brightZaps, string dimSequence, int dimZaps, string palette)
+		public TeslaZapRenderable(
+			WPos pos, int zOffset, in WVec length, string image,
+			string brightSequence, int brightZaps,
+			string dimSequence, int dimZaps,
+			string palette)
 		{
 			Pos = pos;
 			ZOffset = zOffset;
@@ -55,7 +59,7 @@ namespace OpenRA.Mods.Cnc.Graphics
 
 			cachedPos = WPos.Zero;
 			cachedLength = WVec.Zero;
-			cache = Array.Empty<IFinalizedRenderable>();
+			cache = [];
 		}
 
 		public WPos Pos { get; }
@@ -68,8 +72,10 @@ namespace OpenRA.Mods.Cnc.Graphics
 			return new TeslaZapRenderable(Pos, ZOffset, length, image, brightSequence, brightZaps, dimSequence, dimZaps, palette);
 		}
 
-		public IRenderable WithZOffset(int newOffset) { return new TeslaZapRenderable(Pos, ZOffset, length, image, brightSequence, brightZaps, dimSequence, dimZaps, palette); }
-		public IRenderable OffsetBy(in WVec vec) { return new TeslaZapRenderable(Pos + vec, ZOffset, length, image, brightSequence, brightZaps, dimSequence, dimZaps, palette); }
+		public IRenderable WithZOffset(int newOffset) =>
+			new TeslaZapRenderable(Pos, ZOffset, length, image, brightSequence, brightZaps, dimSequence, dimZaps, palette);
+		public IRenderable OffsetBy(in WVec vec) =>
+			new TeslaZapRenderable(Pos + vec, ZOffset, length, image, brightSequence, brightZaps, dimSequence, dimZaps, palette);
 		public IRenderable AsDecoration() { return this; }
 
 		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }

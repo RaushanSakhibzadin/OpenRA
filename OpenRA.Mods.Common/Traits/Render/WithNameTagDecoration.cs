@@ -10,7 +10,6 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Primitives;
@@ -45,16 +44,16 @@ namespace OpenRA.Mods.Common.Traits.Render
 	public class WithNameTagDecoration : WithDecorationBase<WithNameTagDecorationInfo>, INotifyOwnerChanged
 	{
 		readonly SpriteFont font;
+		readonly WithNameTagDecorationInfo info;
 		string name;
-		Color color;
 
 		public WithNameTagDecoration(Actor self, WithNameTagDecorationInfo info)
 			: base(self, info)
 		{
 			font = Game.Renderer.Fonts[info.Font];
-			color = info.UsePlayerColor ? self.Owner.Color : info.Color;
+			this.info = info;
 
-			name = self.Owner.PlayerName;
+			name = self.Owner.ResolvedPlayerName;
 			if (name.Length > info.MaxLength)
 				name = name[..info.MaxLength];
 		}
@@ -62,21 +61,18 @@ namespace OpenRA.Mods.Common.Traits.Render
 		protected override IEnumerable<IRenderable> RenderDecoration(Actor self, WorldRenderer wr, int2 screenPos)
 		{
 			if (IsTraitDisabled || self.IsDead || !self.IsInWorld || !ShouldRender(self))
-				return Enumerable.Empty<IRenderable>();
+				return [];
 
 			var size = font.Measure(name);
-			return new IRenderable[]
-			{
-				new UITextRenderable(font, self.CenterPosition, screenPos - size / 2, 0, color, name)
-			};
+			return
+			[
+				new UITextRenderable(font, self.CenterPosition, screenPos - size / 2, 0, info.UsePlayerColor ? self.OwnerColor() : info.Color, name)
+			];
 		}
 
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
-			if (Info.UsePlayerColor)
-				color = newOwner.Color;
-
-			name = self.Owner.PlayerName;
+			name = self.Owner.ResolvedPlayerName;
 			if (name.Length > Info.MaxLength)
 				name = name[..Info.MaxLength];
 		}

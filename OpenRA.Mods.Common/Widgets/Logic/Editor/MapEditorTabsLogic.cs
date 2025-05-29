@@ -9,29 +9,32 @@
  */
 #endregion
 
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class MapEditorTabsLogic : ChromeLogic
 	{
-		readonly Widget widget;
+		enum MenuType { Select, Tiles, Layers, Actors, Tools, History }
+
+		readonly World world;
+		readonly Widget panelContainer;
+		readonly Widget tabContainer;
 		readonly EditorViewportControllerWidget editor;
 
-		protected enum MenuType { Select, Tiles, Layers, Actors, Tools, History }
-		protected MenuType menuType = MenuType.Tiles;
-		readonly Widget tabContainer;
-
+		MenuType menuType = MenuType.Tiles;
 		MenuType lastSelectedTab = MenuType.Tiles;
 
 		[ObjectCreator.UseCtor]
-		public MapEditorTabsLogic(Widget widget)
+		public MapEditorTabsLogic(Widget widget, World world)
 		{
-			this.widget = widget;
+			this.world = world;
+			panelContainer = widget.Parent;
+			tabContainer = widget.Get("MAP_EDITOR_TAB_CONTAINER");
+
 			editor = widget.Parent.Parent.Get<EditorViewportControllerWidget>("MAP_EDITOR");
 			editor.DefaultBrush.UpdateSelectedTab += HandleUpdateSelectedTab;
-
-			tabContainer = widget.Get("MAP_EDITOR_TAB_CONTAINER");
 
 			SetupTab("SELECT_TAB", "SELECT_WIDGETS", MenuType.Select);
 			SetupTab("TILES_TAB", "TILE_WIDGETS", MenuType.Tiles);
@@ -50,26 +53,31 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		void SetupTab(string buttonId, string tabId, MenuType tabType)
 		{
-			if (buttonId != null)
+			var tab = tabContainer.Get<ButtonWidget>(buttonId);
+			tab.IsHighlighted = () => menuType == tabType;
+			tab.OnClick = () =>
 			{
-				var tab = tabContainer.Get<ButtonWidget>(buttonId);
-				tab.IsHighlighted = () => menuType == tabType;
-				tab.OnClick = () => menuType = SelectTab(tabType);
+				if (tabType != MenuType.Select)
+					lastSelectedTab = tabType;
 
-				if (tabType == MenuType.Select)
-					tab.IsDisabled = () => !editor.DefaultBrush.Selection.HasSelection;
+				menuType = tabType;
+
+				// Clear keyboard focus when switching tabs.
+				Ui.KeyboardFocusWidget = null;
+			};
+
+			// Selection tab is special, it can only be selected if a selection exists.
+			if (tabType == MenuType.Select)
+				tab.IsDisabled = () => !editor.DefaultBrush.Selection.HasSelection;
+
+			if (tabType == MenuType.Tools)
+			{
+				var toolsAvailable = world.Map.Rules.Actors[SystemActors.EditorWorld].HasTraitInfo<IEditorToolInfo>();
+				tab.IsDisabled = () => !toolsAvailable;
 			}
 
-			var container = widget.Parent.Get<ContainerWidget>(tabId);
+			var container = panelContainer.Get<ContainerWidget>(tabId);
 			container.IsVisible = () => menuType == tabType;
-		}
-
-		MenuType SelectTab(MenuType newMenuType)
-		{
-			if (newMenuType != MenuType.Select)
-				lastSelectedTab = newMenuType;
-
-			return newMenuType;
 		}
 
 		void HandleUpdateSelectedTab()

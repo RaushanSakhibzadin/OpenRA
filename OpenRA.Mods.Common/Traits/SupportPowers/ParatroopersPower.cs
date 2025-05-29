@@ -14,23 +14,28 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Effects;
-using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	public class ParatroopersPowerInfo : SupportPowerInfo
+	[Desc("Support power that spawns and delivers units to the desired location via aircraft.")]
+	public class ParatroopersPowerInfo : DirectionalSupportPowerInfo
 	{
 		[ActorReference(typeof(AircraftInfo))]
+		[Desc("Aircraft used to deliver the drop.")]
 		public readonly string UnitType = "badr";
+
+		[Desc("Number of aircraft to use in the formation.")]
 		public readonly int SquadSize = 1;
+
+		[Desc("Distance between the aircraft in a formation.")]
 		public readonly WVec SquadOffset = new(-1536, 1536, 0);
 
 		[NotificationReference("Speech")]
 		[Desc("Speech notification to play when entering the drop zone.")]
 		public readonly string ReinforcementsArrivedSpeechNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		[Desc("Text notification to display when entering the drop zone.")]
 		public readonly string ReinforcementsArrivedTextNotification = null;
 
@@ -42,7 +47,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		[ActorReference(typeof(PassengerInfo))]
 		[Desc("Troops to be delivered.  They will be distributed between the planes if SquadSize > 1.")]
-		public readonly string[] DropItems = Array.Empty<string>();
+		public readonly string[] DropItems = [];
 
 		[Desc("Risks stuck units when they don't have the Paratrooper trait.")]
 		public readonly bool AllowImpassableCells = false;
@@ -54,22 +59,13 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Amount of time (in ticks) to keep the camera alive while the passengers drop.")]
 		public readonly int CameraRemoveDelay = 85;
 
-		[Desc("Enables the player directional targeting")]
-		public readonly bool UseDirectionalTarget = false;
-
-		[Desc("Animation used to render the direction arrows.")]
-		public readonly string DirectionArrowAnimation = null;
-
-		[Desc("Palette for direction cursor animation.")]
-		public readonly string DirectionArrowPalette = "chrome";
-
 		[Desc("Weapon range offset to apply during the beacon clock calculation.")]
 		public readonly WDist BeaconDistanceOffset = WDist.FromCells(4);
 
 		public override object Create(ActorInitializer init) { return new ParatroopersPower(init.Self, this); }
 	}
 
-	public class ParatroopersPower : SupportPower
+	public class ParatroopersPower : DirectionalSupportPower
 	{
 		readonly ParatroopersPowerInfo info;
 
@@ -77,14 +73,6 @@ namespace OpenRA.Mods.Common.Traits
 			: base(self, info)
 		{
 			this.info = info;
-		}
-
-		public override void SelectTarget(Actor self, string order, SupportPowerManager manager)
-		{
-			if (info.UseDirectionalTarget)
-				self.World.OrderGenerator = new SelectDirectionalTarget(self.World, order, manager, Info.Cursor, info.DirectionArrowAnimation, info.DirectionArrowPalette);
-			else
-				base.SelectTarget(self, order, manager);
 		}
 
 		public override void Activate(Actor self, Order order, SupportPowerManager manager)
@@ -125,11 +113,11 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					self.World.AddFrameEndTask(w =>
 					{
-						camera = w.CreateActor(info.CameraActor, new TypeDictionary
-						{
+						camera = w.CreateActor(info.CameraActor,
+						[
 							new LocationInit(self.World.Map.CellContaining(target)),
 							new OwnerInit(self.Owner),
-						});
+						]);
 					});
 				}
 
@@ -180,20 +168,20 @@ namespace OpenRA.Mods.Common.Traits
 				var so = info.SquadOffset;
 				var spawnOffset = new WVec(i * so.Y, -Math.Abs(i) * so.X, 0).Rotate(dropRotation);
 
-				aircraft.Add(self.World.CreateActor(false, info.UnitType, new TypeDictionary
-				{
+				aircraft.Add(self.World.CreateActor(false, info.UnitType,
+				[
 					new CenterPositionInit(startEdge + spawnOffset),
 					new OwnerInit(self.Owner),
 					new FacingInit(facing.Value),
-				}));
+				]));
 			}
 
 			foreach (var p in info.DropItems)
 			{
-				units.Add(self.World.CreateActor(false, p.ToLowerInvariant(), new TypeDictionary
-				{
+				units.Add(self.World.CreateActor(false, p.ToLowerInvariant(),
+				[
 					new OwnerInit(self.Owner)
-				}));
+				]));
 			}
 
 			self.World.AddFrameEndTask(w =>

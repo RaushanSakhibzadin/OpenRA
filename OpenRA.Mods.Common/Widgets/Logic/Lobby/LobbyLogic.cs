@@ -15,47 +15,49 @@ using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Network;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
 {
+	[IncludeStaticFluentReferences(typeof(LobbyUtils))]
 	public class LobbyLogic : ChromeLogic, INotificationHandler<TextNotification>
 	{
-		[TranslationReference]
+		[FluentReference]
 		const string Add = "options-slot-admin.add-bots";
 
-		[TranslationReference]
+		[FluentReference]
 		const string Remove = "options-slot-admin.remove-bots";
 
-		[TranslationReference]
+		[FluentReference]
 		const string ConfigureBots = "options-slot-admin.configure-bots";
 
-		[TranslationReference("count")]
+		[FluentReference("count")]
 		const string NumberTeams = "options-slot-admin.teams-count";
 
-		[TranslationReference]
+		[FluentReference]
 		const string HumanVsBots = "options-slot-admin.humans-vs-bots";
 
-		[TranslationReference]
+		[FluentReference]
 		const string FreeForAll = "options-slot-admin.free-for-all";
 
-		[TranslationReference]
+		[FluentReference]
 		const string ConfigureTeams = "options-slot-admin.configure-teams";
 
-		[TranslationReference]
+		[FluentReference]
 		const string Back = "button-back";
 
-		[TranslationReference]
+		[FluentReference]
 		const string TeamChat = "button-team-chat";
 
-		[TranslationReference]
+		[FluentReference]
 		const string GeneralChat = "button-general-chat";
 
-		[TranslationReference("seconds")]
+		[FluentReference("seconds")]
 		const string ChatAvailability = "label-chat-availability";
 
-		[TranslationReference]
+		[FluentReference]
 		const string ChatDisabled = "label-chat-disabled";
 
 		static readonly Action DoNothing = () => { };
@@ -81,14 +83,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly Widget newSpectatorTemplate;
 
 		readonly ScrollPanelWidget lobbyChatPanel;
-		readonly Dictionary<TextNotificationPool, Widget> chatTemplates = new();
+		readonly Dictionary<TextNotificationPool, Widget> chatTemplates = [];
 		readonly TextFieldWidget chatTextField;
 		readonly CachedTransform<int, string> chatAvailableIn;
 		readonly string chatDisabled;
 
 		readonly ScrollPanelWidget players;
 
-		readonly Dictionary<string, LobbyFaction> factions = new();
+		readonly Dictionary<string, LobbyFaction> factions = [];
 
 		readonly IColorPickerManagerInfo colorManager;
 
@@ -96,6 +98,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		MapPreview map;
 		Session.MapStatus mapStatus;
+		MapGenerationArgs lastGeneratedMap;
 
 		bool chatEnabled;
 		bool disableTeamChat;
@@ -103,7 +106,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		bool teamChat;
 		bool updateDiscordStatus = true;
 		bool resetOptionsButtonEnabled;
-		Dictionary<int, SpawnOccupant> spawnOccupants = new();
+		bool mapAvailable;
+		Dictionary<int, SpawnOccupant> spawnOccupants = [];
 
 		readonly string chatLineSound;
 		readonly string playerJoinedSound;
@@ -188,8 +192,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					"onMouseDown", (Action<MapPreviewWidget, MapPreview, MouseInput>)((preview, mapPreview, mi) =>
 						LobbyUtils.SelectSpawnPoint(orderManager, preview, mapPreview, mi))
 				},
-				{ "getSpawnOccupants", (Func<Dictionary<int, SpawnOccupant>>)(() => spawnOccupants) },
-				{ "getDisabledSpawnPoints", (Func<HashSet<int>>)(() => orderManager.LobbyInfo.DisabledSpawnPoints) },
+				{ "getSpawnOccupants", () => spawnOccupants },
+				{ "getDisabledSpawnPoints", () => orderManager.LobbyInfo.DisabledSpawnPoints },
 				{ "showUnoccupiedSpawnpoints", true },
 				{ "mapUpdatesEnabled", true },
 				{
@@ -206,7 +210,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			UpdateCurrentMap();
 
-			var playerBin = Ui.LoadWidget("LOBBY_PLAYER_BIN", lobby.Get("TOP_PANELS_ROOT"), new WidgetArgs());
+			var playerBin = Ui.LoadWidget("LOBBY_PLAYER_BIN", lobby.Get("TOP_PANELS_ROOT"), []);
 			playerBin.IsVisible = () => panel == PanelType.Players;
 
 			players = playerBin.Get<ScrollPanelWidget>("LOBBY_PLAYERS");
@@ -219,7 +223,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			colorManager = modRules.Actors[SystemActors.World].TraitInfo<IColorPickerManagerInfo>();
 
 			foreach (var f in modRules.Actors[SystemActors.World].TraitInfos<FactionInfo>())
-				factions.Add(f.InternalName, new LobbyFaction { Selectable = f.Selectable, Name = f.Name, Side = f.Side, Description = f.Description?.Replace(@"\n", "\n") });
+				factions.Add(f.InternalName, new LobbyFaction { Selectable = f.Selectable, Name = f.Name, Side = f.Side, Description = f.Description });
 
 			var gameStarting = false;
 			Func<bool> configurationDisabled = () => !Game.IsHost || gameStarting ||
@@ -246,16 +250,30 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						Game.Settings.Save();
 					});
 
+					var onSelectGenerated = new Action<MapGenerationArgs>(args =>
+					{
+						if (args.Uid == map.Uid)
+							return;
+
+						lastGeneratedMap = args;
+						orderManager.IssueOrder(Order.FromTargetString("GenerateMap", args.Serialize(), true));
+						orderManager.IssueOrder(Order.Command("map " + args.Uid));
+						Game.Settings.Server.Map = args.Uid;
+						Game.Settings.Save();
+					});
+
 					// Check for updated maps, if the user has edited a map we'll preselect it for them
 					modData.MapCache.UpdateMaps();
 
 					Ui.OpenWindow("MAPCHOOSER_PANEL", new WidgetArgs()
 					{
 						{ "initialMap", modData.MapCache.PickLastModifiedMap(MapVisibility.Lobby) ?? map.Uid },
+						{ "initialGeneratedMap", lastGeneratedMap },
 						{ "remoteMapPool", orderManager.ServerMapPool },
 						{ "initialTab", MapClassification.System },
 						{ "onExit", modData.MapCache.UpdateMaps },
 						{ "onSelect", Game.IsHost ? onSelect : null },
+						{ "onSelectGenerated", Game.IsHost ? onSelectGenerated : null },
 						{ "filter", MapVisibility.Lobby },
 					});
 				};
@@ -281,7 +299,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						{
 							new()
 							{
-								Title = TranslationProvider.GetString(Add),
+								Title = FluentProvider.GetMessage(Add),
 								IsSelected = () => false,
 								OnClick = () =>
 								{
@@ -300,7 +318,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						{
 							botOptions.Add(new DropDownOption()
 							{
-								Title = TranslationProvider.GetString(Remove),
+								Title = FluentProvider.GetMessage(Remove),
 								IsSelected = () => false,
 								OnClick = () =>
 								{
@@ -314,7 +332,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 							});
 						}
 
-						options.Add(TranslationProvider.GetString(ConfigureBots), botOptions);
+						options.Add(FluentProvider.GetMessage(ConfigureBots), botOptions);
 					}
 
 					var teamCount = (orderManager.LobbyInfo.Slots.Count(s => !s.Value.LockTeam && orderManager.LobbyInfo.ClientInSlot(s.Key) != null) + 1) / 2;
@@ -322,7 +340,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					{
 						var teamOptions = Enumerable.Range(2, teamCount - 1).Reverse().Select(d => new DropDownOption
 						{
-							Title = TranslationProvider.GetString(NumberTeams, Translation.Arguments("count", d)),
+							Title = FluentProvider.GetMessage(NumberTeams, "count", d),
 							IsSelected = () => false,
 							OnClick = () => orderManager.IssueOrder(Order.Command($"assignteams {d}"))
 						}).ToList();
@@ -331,7 +349,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						{
 							teamOptions.Add(new DropDownOption
 							{
-								Title = TranslationProvider.GetString(HumanVsBots),
+								Title = FluentProvider.GetMessage(HumanVsBots),
 								IsSelected = () => false,
 								OnClick = () => orderManager.IssueOrder(Order.Command("assignteams 1"))
 							});
@@ -339,12 +357,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 						teamOptions.Add(new DropDownOption
 						{
-							Title = TranslationProvider.GetString(FreeForAll),
+							Title = FluentProvider.GetMessage(FreeForAll),
 							IsSelected = () => false,
 							OnClick = () => orderManager.IssueOrder(Order.Command("assignteams 0"))
 						});
 
-						options.Add(TranslationProvider.GetString(ConfigureTeams), teamOptions);
+						options.Add(FluentProvider.GetMessage(ConfigureTeams), teamOptions);
 					}
 
 					ScrollItemWidget SetupItem(DropDownOption option, ScrollItemWidget template)
@@ -369,7 +387,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var optionsBin = Ui.LoadWidget("LOBBY_OPTIONS_BIN", lobby.Get("TOP_PANELS_ROOT"), new WidgetArgs()
 			{
 				{ "orderManager", orderManager },
-				{ "getMap", (Func<MapPreview>)(() => map) },
+				{ "getMap", () => map },
 				{ "configurationDisabled", configurationDisabled }
 			});
 
@@ -463,7 +481,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				};
 			}
 
-			var forceStartBin = Ui.LoadWidget("FORCE_START_DIALOG", lobby.Get("TOP_PANELS_ROOT"), new WidgetArgs());
+			var forceStartBin = Ui.LoadWidget("FORCE_START_DIALOG", lobby.Get("TOP_PANELS_ROOT"), []);
 			forceStartBin.IsVisible = () => panel == PanelType.ForceStart;
 			forceStartBin.Get("KICK_WARNING").IsVisible = () => orderManager.LobbyInfo.Clients.Any(c => c.IsInvalid);
 			var forceStartButton = forceStartBin.Get<ButtonWidget>("OK_BUTTON");
@@ -482,7 +500,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			if (skirmishMode)
 			{
-				var disconnectButtonText = TranslationProvider.GetString(Back);
+				var disconnectButtonText = FluentProvider.GetMessage(Back);
 				disconnectButton.GetText = () => disconnectButtonText;
 			}
 
@@ -491,13 +509,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				foreach (var item in templateIds.Nodes)
 				{
 					var key = FieldLoader.GetValue<TextNotificationPool>("key", item.Key);
-					chatTemplates[key] = Ui.LoadWidget(item.Value.Value, null, new WidgetArgs());
+					chatTemplates[key] = Ui.LoadWidget(item.Value.Value, null, []);
 				}
 			}
 
 			var chatMode = lobby.Get<ButtonWidget>("CHAT_MODE");
-			var team = TranslationProvider.GetString(TeamChat);
-			var all = TranslationProvider.GetString(GeneralChat);
+			var team = FluentProvider.GetMessage(TeamChat);
+			var all = FluentProvider.GetMessage(GeneralChat);
 			chatMode.GetText = () => teamChat ? team : all;
 			chatMode.OnClick = () => teamChat ^= true;
 			chatMode.IsDisabled = () => disableTeamChat || !chatEnabled;
@@ -538,8 +556,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			chatTextField.OnEscKey = _ => chatTextField.YieldKeyboardFocus();
 
-			chatAvailableIn = new CachedTransform<int, string>(x => TranslationProvider.GetString(ChatAvailability, Translation.Arguments("seconds", x)));
-			chatDisabled = TranslationProvider.GetString(ChatDisabled);
+			chatAvailableIn = new CachedTransform<int, string>(x => FluentProvider.GetMessage(ChatAvailability, "seconds", x));
+			chatDisabled = FluentProvider.GetMessage(ChatDisabled);
 
 			lobbyChatPanel = lobby.Get<ScrollPanelWidget>("CHAT_DISPLAY");
 			lobbyChatPanel.RemoveChildren();
@@ -588,11 +606,20 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		public override void Tick()
 		{
+			// Map may have been installed or generated in the background
+			if (!mapAvailable && map.Status == MapStatus.Available)
+			{
+				mapAvailable = true;
+				orderManager.IssueOrder(Order.Command($"state {Session.ClientState.NotReady}"));
+			}
+
 			if (panel == PanelType.Options && OptionsTabDisabled())
 				panel = PanelType.Players;
 
 			var chatWasEnabled = chatEnabled;
-			chatEnabled = worldRenderer.World.IsReplay || (Game.RunTime >= TextNotificationsManager.ChatDisabledUntil && TextNotificationsManager.ChatDisabledUntil != uint.MaxValue);
+			chatEnabled =
+				worldRenderer.World.IsReplay ||
+				(Game.RunTime >= TextNotificationsManager.ChatDisabledUntil && TextNotificationsManager.ChatDisabledUntil != uint.MaxValue);
 
 			if (chatEnabled && !chatWasEnabled)
 			{
@@ -647,12 +674,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			map = modData.MapCache[uid];
 
 			// Tell the server that we have the map
-			if (map.Status == MapStatus.Available)
+			mapAvailable = map.Status == MapStatus.Available;
+			if (mapAvailable)
 				orderManager.IssueOrder(Order.Command($"state {Session.ClientState.NotReady}"));
 
 			// We don't have the map
 			else if (map.Status != MapStatus.DownloadAvailable && Game.Settings.Game.AllowDownloading)
-				modData.MapCache.QueryRemoteMapDetails(services.MapRepository, new[] { uid });
+				modData.MapCache.QueryRemoteMapDetails(services.MapRepository, [uid]);
 		}
 
 		void UpdatePlayerList()
@@ -748,7 +776,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					}
 					else
 					{
-						LobbyUtils.SetupNameWidget(template, client, orderManager, worldRenderer);
+						LobbyUtils.SetupNameWidget(template, client, orderManager, worldRenderer, map);
 						LobbyUtils.SetupTeamWidget(template, client);
 						LobbyUtils.SetupHandicapWidget(template, client);
 						LobbyUtils.SetupSpawnWidget(template, client);
@@ -800,7 +828,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						LobbyUtils.SetupPlayerActionWidget(template, client, orderManager, worldRenderer,
 							lobby, () => panel = PanelType.Kick, () => panel = PanelType.Players);
 					else
-						LobbyUtils.SetupNameWidget(template, client, orderManager, worldRenderer);
+						LobbyUtils.SetupNameWidget(template, client, orderManager, worldRenderer, map);
 
 					if (client.IsAdmin)
 						LobbyUtils.SetupReadyWidget(template, client);
@@ -850,7 +878,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			while (players.Children.Count > idx)
 				players.RemoveChild(players.Children[idx]);
 
-			tabCompletion.Names = orderManager.LobbyInfo.Clients.Select(c => c.Name).Distinct().ToList();
+			tabCompletion.Names = orderManager.LobbyInfo.Clients.Where(c => !c.IsBot).Select(c => c.Name).Distinct().ToList();
 		}
 
 		void UpdateDiscordStatus()
@@ -884,7 +912,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				if (orderManager.LobbyInfo.GlobalSettings.Dedicated)
 				{
 					var endpoint = CurrentServerSettings.Target.GetConnectEndPoints().First();
-					secret = string.Concat(endpoint.Address, "|", endpoint.Port);
+					secret = $"{endpoint.Address}|{endpoint.Port}";
 				}
 
 				var state = skirmishMode ? DiscordState.InSkirmishLobby : DiscordState.InMultiplayerLobby;

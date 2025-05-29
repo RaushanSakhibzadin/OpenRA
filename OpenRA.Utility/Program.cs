@@ -13,13 +13,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
 
 namespace OpenRA
 {
 	using UtilityActions = Dictionary<string, KeyValuePair<Action<Utility, string[]>, Func<string[], bool>>>;
 
-	[Serializable]
 	public class NoSuchCommandException : Exception
 	{
 		public readonly string Command;
@@ -27,12 +25,6 @@ namespace OpenRA
 			: base($"No such command '{command}'")
 		{
 			Command = command;
-		}
-
-		public override void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
-			base.GetObjectData(info, context);
-			info.AddValue("Command", Command);
 		}
 	}
 
@@ -43,6 +35,13 @@ namespace OpenRA
 			try
 			{
 				Run(args);
+			}
+			catch
+			{
+				// Flush logs before rethrowing, i.e. allowing the exception to go unhandled.
+				// try-finally won't work - an unhandled exception kills our process without running the finally block!
+				Log.Dispose();
+				throw;
 			}
 			finally
 			{
@@ -64,11 +63,11 @@ namespace OpenRA
 			var envModSearchPaths = Environment.GetEnvironmentVariable("MOD_SEARCH_PATHS");
 			var modSearchPaths = !string.IsNullOrWhiteSpace(envModSearchPaths) ?
 				FieldLoader.GetValue<string[]>("MOD_SEARCH_PATHS", envModSearchPaths) :
-				new[] { Path.Combine(Platform.EngineDir, "mods") };
+				[Path.Combine(Platform.EngineDir, "mods")];
 
 			if (args.Length == 0)
 			{
-				PrintUsage(new InstalledMods(modSearchPaths, Array.Empty<string>()), null);
+				PrintUsage(new InstalledMods(modSearchPaths, []), null);
 				return;
 			}
 
@@ -76,7 +75,7 @@ namespace OpenRA
 			var explicitModPaths = Array.Empty<string>();
 			if (File.Exists(modId) || Directory.Exists(modId))
 			{
-				explicitModPaths = new[] { modId };
+				explicitModPaths = [modId];
 				modId = Path.GetFileNameWithoutExtension(modId);
 			}
 
@@ -133,6 +132,7 @@ namespace OpenRA
 				if (e is NoSuchCommandException)
 				{
 					Console.WriteLine(e.Message);
+					Log.Dispose(); // Flush logs before we terminate the process.
 					Environment.Exit(1);
 				}
 				else
@@ -152,7 +152,7 @@ namespace OpenRA
 			if (actions == null)
 				return;
 
-			var keys = actions.Keys.OrderBy(x => x);
+			var keys = actions.Keys.Order();
 
 			foreach (var key in keys)
 			{

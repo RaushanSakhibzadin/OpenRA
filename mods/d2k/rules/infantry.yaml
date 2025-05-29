@@ -52,6 +52,17 @@ engineer:
 	Captures:
 		CaptureTypes: building
 		PlayerExperience: 10
+	Captures@Husk:
+		CaptureTypes: husk
+		PlayerExperience: 10
+	Infiltrates:
+		Types: Husk
+		ValidRelationships: Ally
+	Captures@Cliff:
+		CaptureTypes: cliff
+		ConsumedByCapture: false
+		CaptureDelay: 150
+		ValidRelationships: Enemy, Neutral, Ally
 	Encyclopedia:
 		Description: actor-engineer.encyclopedia
 		Order: 30
@@ -226,7 +237,7 @@ grenadier:
 		ProneOffset: 96,100,-64
 	WithInfantryBody:
 		DefaultAttackSequence: throw
-	Explodes:
+	FireWarheadsOnDeath:
 		Weapon: GrenDeath
 		EmptyWeapon: GrenDeath
 
@@ -264,7 +275,7 @@ sardaukar:
 		Category: Units
 	Voiced:
 		VoiceSet: GenericVoice
-	Explodes:
+	FireWarheadsOnDeath:
 		Weapon: SardDeath
 		EmptyWeapon: SardDeath
 		Chance: 100
@@ -311,18 +322,18 @@ saboteur:
 	Mobile:
 		Speed: 43
 	Demolition:
-		DetonationDelay: 0
-		Flashes: 0
+		DetonationDelay: 25
+		Flashes: 3
 		EnterBehaviour: Suicide
 	-RevealOnFire:
-	GrantConditionOnDeployWithCharge:
-		DeployedCondition: deployed
+	GrantChargedConditionOnToggle:
+		ActivatedCondition: cloaked
 		CanCancelCondition: true
 		ChargeDuration: 1250
 		ChargeThreshhold: 100
 		ConditionDuration: 375
 	Cloak:
-		RequiresCondition: deployed
+		RequiresCondition: cloaked
 		InitialDelay: 0
 		CloakDelay: 25
 		CloakSound: STEALTH1.WAV

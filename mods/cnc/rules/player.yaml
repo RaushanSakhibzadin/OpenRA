@@ -35,9 +35,14 @@ Player:
 		DefaultCash: 7500
 	DeveloperMode:
 		CheckboxDisplayOrder: 9
-	BaseAttackNotifier:
+	DamageNotifier:
+		ValidTargets: Structure
+		Notification: BaseAttack
 		TextNotification: notification-base-under-attack
 		AllyTextNotification: notification-ally-under-attack
+	DamageNotifier@Unit:
+		InvalidTargets: Structure
+		NotifyInterval: 10000
 	Shroud:
 		FogCheckboxDisplayOrder: 3
 	LobbyPrerequisiteCheckbox@GLOBALFACTUNDEPLOY:

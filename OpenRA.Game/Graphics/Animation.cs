@@ -22,6 +22,7 @@ namespace OpenRA.Graphics
 		public string Name { get; private set; }
 		public bool IsDecoration { get; set; }
 
+		readonly Map map;
 		readonly SequenceSet sequences;
 		readonly Func<WAngle> facingFunc;
 		readonly Func<bool> paused;
@@ -43,6 +44,7 @@ namespace OpenRA.Graphics
 
 		public Animation(World world, string name, Func<WAngle> facingFunc, Func<bool> paused)
 		{
+			map = world.Map;
 			sequences = world.Map.Sequences;
 			Name = name.ToLowerInvariant();
 			this.facingFunc = facingFunc;
@@ -58,18 +60,23 @@ namespace OpenRA.Graphics
 			var tintModifiers = CurrentSequence.IgnoreWorldTint ? TintModifiers.IgnoreWorldTint : TintModifiers.None;
 			var alpha = CurrentSequence.GetAlpha(CurrentFrame);
 			var (image, rotation) = CurrentSequence.GetSpriteWithRotation(CurrentFrame, facingFunc());
-			var imageRenderable = new SpriteRenderable(image, pos, offset, CurrentSequence.ZOffset + zOffset, palette, CurrentSequence.Scale, alpha, float3.Ones, tintModifiers, IsDecoration,
-				rotation);
+			var imageRenderable = new SpriteRenderable(
+				image, pos, offset, CurrentSequence.ZOffset + zOffset, palette,
+				CurrentSequence.Scale, alpha, float3.Ones, tintModifiers, IsDecoration, rotation);
 
 			var shadow = CurrentSequence.GetShadow(CurrentFrame, facingFunc());
 			if (shadow != null)
 			{
-				var shadowRenderable = new SpriteRenderable(shadow, pos, offset, CurrentSequence.ShadowZOffset + zOffset, palette, CurrentSequence.Scale, 1f, float3.Ones, tintModifiers,
+				var height = map.DistanceAboveTerrain(pos).Length;
+
+				var shadowRenderable = new SpriteRenderable(
+					shadow, pos, offset - new WVec(0, 0, height), CurrentSequence.ShadowZOffset + zOffset + height, palette,
+					CurrentSequence.Scale, 1f, float3.Ones, tintModifiers,
 					true, rotation);
-				return new IRenderable[] { shadowRenderable, imageRenderable };
+				return [shadowRenderable, imageRenderable];
 			}
 
-			return new IRenderable[] { imageRenderable };
+			return [imageRenderable];
 		}
 
 		public IRenderable[] RenderUI(WorldRenderer wr, int2 pos, in WVec offset, int zOffset, PaletteReference palette, float scale = 1f, float rotation = 0f)
@@ -85,10 +92,10 @@ namespace OpenRA.Graphics
 			{
 				var shadowPos = pos - new int2((int)(scale * shadow.Size.X / 2), (int)(scale * shadow.Size.Y / 2));
 				var shadowRenderable = new UISpriteRenderable(shadow, WPos.Zero + offset, shadowPos, CurrentSequence.ShadowZOffset + zOffset, palette, scale, 1f, rotation);
-				return new IRenderable[] { shadowRenderable, imageRenderable };
+				return [shadowRenderable, imageRenderable];
 			}
 
-			return new IRenderable[] { imageRenderable };
+			return [imageRenderable];
 		}
 
 		public Rectangle ScreenBounds(WorldRenderer wr, WPos pos, in WVec offset)
@@ -245,7 +252,7 @@ namespace OpenRA.Graphics
 
 		public string GetRandomExistingSequence(string[] sequences, MersenneTwister random)
 		{
-			return sequences.Where(s => HasSequence(s)).RandomOrDefault(random);
+			return sequences.Where(HasSequence).RandomOrDefault(random);
 		}
 	}
 }

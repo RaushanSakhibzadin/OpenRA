@@ -24,7 +24,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Speech notification to play when a unit is delivered.")]
 		public readonly string ReadyAudio = "Reinforce";
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		[Desc("Text notification to display when a unit is delivered.")]
 		public readonly string ReadyTextNotification = null;
 
@@ -104,15 +104,15 @@ namespace OpenRA.Mods.Common.Traits
 					return;
 				}
 
-				var actor = w.CreateActor(info.ActorType, new TypeDictionary
-				{
+				var actor = w.CreateActor(info.ActorType,
+				[
 					new CenterPositionInit(w.Map.CenterOfCell(startPos) + new WVec(WDist.Zero, WDist.Zero, aircraftInfo.CruiseAltitude)),
 					new OwnerInit(owner),
 					new FacingInit(spawnFacing)
-				});
+				]);
 
 				var exitCell = self.Location + exit.ExitCell;
-				actor.QueueActivity(new Land(actor, Target.FromActor(self), WDist.Zero, info.LandOffset, info.Facing, clearCells: new CPos[1] { exitCell }));
+				actor.QueueActivity(new Land(actor, Target.FromActor(self), WDist.Zero, info.LandOffset, info.Facing, clearCells: [exitCell]));
 				if (info.WaitTickBeforeProduce > 0)
 					actor.QueueActivity(new Wait(info.WaitTickBeforeProduce));
 				actor.QueueActivity(new CallFunc(() =>

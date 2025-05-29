@@ -20,7 +20,7 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 
 	public class Squad
 	{
-		public HashSet<Actor> Units = new();
+		public HashSet<Actor> Units = [];
 		public SquadType Type;
 
 		internal IBot Bot;
@@ -58,13 +58,13 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 				case SquadType.Assault:
 				case SquadType.Rush:
 				case SquadType.Naval:
-					FuzzyStateMachine.ChangeState(this, new GroundUnitsIdleState(), true);
+					FuzzyStateMachine.ChangeState(this, new GroundUnitsIdleState());
 					break;
 				case SquadType.Air:
-					FuzzyStateMachine.ChangeState(this, new AirIdleState(), true);
+					FuzzyStateMachine.ChangeState(this, new AirIdleState());
 					break;
 				case SquadType.Protection:
-					FuzzyStateMachine.ChangeState(this, new UnitsForProtectionIdleState(), true);
+					FuzzyStateMachine.ChangeState(this, new UnitsForProtectionIdleState());
 					break;
 			}
 		}
@@ -100,6 +100,7 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 			var valid =
 				TargetActor != null &&
 				TargetActor.IsInWorld &&
+				!TargetActor.IsDead &&
 				Units.Any(Target.IsValidFor) &&
 				!TargetActor.Info.HasTraitInfo<HuskInfo>();
 			if (!valid)
@@ -113,7 +114,7 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 			// e.g. a ship targeting a land unit, but the land unit moved north.
 			// We need to update our location to move north as well.
 			// If we can reach the actor directly, we'll just target it directly.
-			var target = SquadManager.FindEnemies(new[] { TargetActor }, squadUnit).FirstOrDefault();
+			var target = SquadManager.FindEnemies([TargetActor], squadUnit).FirstOrDefault();
 			SetActorToTarget(target);
 			return target.Actor != null;
 		}
@@ -141,7 +142,7 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 				new("Units", FieldSaver.FormatValue(Units.Select(a => a.ActorID).ToArray()))
 			};
 
-			if (Target != Target.Invalid)
+			if (Target.Type != TargetType.Invalid)
 			{
 				nodes.Add(new MiniYamlNode("ActorToTarget", FieldSaver.FormatValue(TargetActor.ActorID)));
 				nodes.Add(new MiniYamlNode("TargetOffset", FieldSaver.FormatValue(Target.CenterPosition - TargetActor.CenterPosition)));
@@ -173,7 +174,7 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 			var unitsNode = yaml.NodeWithKeyOrDefault("Units");
 			if (unitsNode != null)
 				squad.Units.UnionWith(FieldLoader.GetValue<uint[]>("Units", unitsNode.Value.Value)
-					.Select(a => squadManager.World.GetActorById(a)));
+					.Select(squadManager.World.GetActorById));
 
 			return squad;
 		}

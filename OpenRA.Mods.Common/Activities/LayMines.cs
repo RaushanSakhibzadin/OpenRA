@@ -13,7 +13,6 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Activities;
 using OpenRA.Mods.Common.Traits;
-using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Activities
@@ -26,6 +25,7 @@ namespace OpenRA.Mods.Common.Activities
 		readonly IMove movement;
 		readonly IMoveInfo moveInfo;
 		readonly RearmableInfo rearmableInfo;
+		readonly MoveCooldownHelper moveCooldownHelper;
 
 		List<CPos> minefield;
 		bool returnToBase;
@@ -39,12 +39,13 @@ namespace OpenRA.Mods.Common.Activities
 			movement = self.Trait<IMove>();
 			moveInfo = self.Info.TraitInfo<IMoveInfo>();
 			rearmableInfo = self.Info.TraitInfoOrDefault<RearmableInfo>();
+			moveCooldownHelper = new MoveCooldownHelper(self.World, movement as Mobile) { RetryIfDestinationBlocked = true };
 			this.minefield = minefield;
 		}
 
 		protected override void OnFirstRun(Actor self)
 		{
-			minefield ??= new List<CPos> { self.Location };
+			minefield ??= [self.Location];
 		}
 
 		CPos? NextValidCell(Actor self)
@@ -83,6 +84,10 @@ namespace OpenRA.Mods.Common.Activities
 				}
 			}
 
+			var result = moveCooldownHelper.Tick(false);
+			if (result != null)
+				return result.Value;
+
 			if ((minefield == null || minefield.Contains(self.Location)) && CanLayMine(self, self.Location))
 			{
 				if (rearmableInfo != null && ammoPools.Any(p => p.Info.Name == minelayer.Info.AmmoPoolName && !p.HasAmmo))
@@ -98,6 +103,7 @@ namespace OpenRA.Mods.Common.Activities
 						return true;
 
 					// Add a CloseEnough range of 512 to the Rearm/Repair activities in order to ensure that we're at the host actor
+					moveCooldownHelper.NotifyMoveQueued();
 					QueueChild(new MoveAdjacentTo(self, Target.FromActor(rearmTarget)));
 					QueueChild(movement.MoveTo(self.World.Map.CellContaining(rearmTarget.CenterPosition), ignoreActor: rearmTarget));
 					QueueChild(new Resupply(self, rearmTarget, new WDist(512)));
@@ -125,6 +131,7 @@ namespace OpenRA.Mods.Common.Activities
 			var nextCell = NextValidCell(self);
 			if (nextCell != null)
 			{
+				moveCooldownHelper.NotifyMoveQueued();
 				QueueChild(movement.MoveTo(nextCell.Value, 0));
 				return false;
 			}
@@ -142,7 +149,9 @@ namespace OpenRA.Mods.Common.Activities
 				var positionable = (IPositionable)movement;
 				var mobile = positionable as Mobile;
 				minefield.RemoveAll(c => self.World.ActorMap.GetActorsAt(c)
-					.Any(a => a.Info.Name == minelayer.Info.Mine.ToLowerInvariant() && a.CanBeViewedByPlayer(self.Owner)) ||
+					.Any(a =>
+						string.Equals(a.Info.Name, minelayer.Info.Mine, System.StringComparison.OrdinalIgnoreCase)
+						&& a.CanBeViewedByPlayer(self.Owner)) ||
 						((!positionable.CanEnterCell(c, null, BlockedByActor.Immovable) || (mobile != null && !mobile.CanStayInCell(c)))
 						&& self.Owner.Shroud.IsVisible(c)));
 			}
@@ -208,11 +217,11 @@ namespace OpenRA.Mods.Common.Activities
 				if (!CanLayMine(self, self.Location))
 					return;
 
-				var mine = w.CreateActor(minelayer.Info.Mine, new TypeDictionary
-				{
+				var mine = w.CreateActor(minelayer.Info.Mine,
+				[
 					new LocationInit(self.Location),
 					new OwnerInit(self.Owner),
-				});
+				]);
 
 				foreach (var t in self.TraitsImplementing<INotifyMineLaying>())
 					t.MineLaid(self, mine);

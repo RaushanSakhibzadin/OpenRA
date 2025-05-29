@@ -25,7 +25,8 @@ namespace OpenRA
 
 	public interface IPlatform
 	{
-		IPlatformWindow CreateWindow(Size size, WindowMode windowMode, float scaleModifier, int vertexBatchSize, int indexBatchSize, int videoDisplay, GLProfile profile);
+		IPlatformWindow CreateWindow(
+			Size size, WindowMode windowMode, float scaleModifier, int vertexBatchSize, int indexBatchSize, int videoDisplay, GLProfile profile);
 		ISoundEngine CreateSound(string device);
 		IFont CreateFont(byte[] data);
 	}
@@ -82,7 +83,8 @@ namespace OpenRA
 
 	public interface IGraphicsContext : IDisposable
 	{
-		IVertexBuffer<T> CreateVertexBuffer<T>(int size) where T : struct;
+		IVertexBuffer<T> CreateEmptyVertexBuffer<T>(int size) where T : struct;
+		IVertexBuffer<T> CreateVertexBuffer<T>(T[] data, bool dynamic = true) where T : struct;
 		T[] CreateVertices<T>(int size) where T : struct;
 		IIndexBuffer CreateIndexBuffer(uint[] indices);
 		ITexture CreateTexture();
@@ -176,12 +178,6 @@ namespace OpenRA
 		PointList,
 		LineList,
 		TriangleList,
-	}
-
-	public readonly struct Range<T>
-	{
-		public readonly T Start, End;
-		public Range(T start, T end) { Start = start; End = end; }
 	}
 
 	public enum WindowMode

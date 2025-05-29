@@ -75,8 +75,8 @@ namespace OpenRA.Mods.Common.Widgets
 			radarTerrainLayers = world.WorldActor.TraitsImplementing<IRadarTerrainLayer>().ToArray();
 			isRectangularIsometric = world.Map.Grid.Type == MapGridType.RectangularIsometric;
 			cellWidth = isRectangularIsometric ? 2 : 1;
-			previewWidth = world.Map.MapSize.X;
-			previewHeight = world.Map.MapSize.Y;
+			previewWidth = world.Map.MapSize.Width;
+			previewHeight = world.Map.MapSize.Height;
 			if (isRectangularIsometric)
 				previewWidth = 2 * previewWidth - 1;
 		}
@@ -97,7 +97,6 @@ namespace OpenRA.Mods.Common.Widgets
 
 			// The four layers are stored in a 2x2 grid within a single texture
 			radarSheet = new Sheet(SheetType.BGRA, new Size(2 * previewWidth, 2 * previewHeight).NextPowerOf2());
-			radarSheet.CreateBuffer();
 			radarData = radarSheet.GetData();
 
 			MapBoundsChanged();

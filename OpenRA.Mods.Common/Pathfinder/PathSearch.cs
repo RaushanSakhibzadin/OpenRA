@@ -27,7 +27,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 
 		// PERF: Maintain a pool of layers used for paths searches for each world. These searches are performed often
 		// so we wish to avoid the high cost of initializing a new search space every time by reusing the old ones.
-		static readonly ConditionalWeakTable<World, CellInfoLayerPool> LayerPoolTable = new();
+		static readonly ConditionalWeakTable<World, CellInfoLayerPool> LayerPoolTable = [];
 		static readonly ConditionalWeakTable<World, CellInfoLayerPool>.CreateValueCallback CreateLayerPool = world => new CellInfoLayerPool(world.Map);
 
 		static CellInfoLayerPool LayerPoolForWorld(World world)
@@ -123,7 +123,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 
 		/// <summary>
 		/// Default: Diagonal distance heuristic. More information:
-		/// http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
+		/// https://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
 		/// Layers are ignored and incur no additional cost.
 		/// </summary>
 		/// <param name="locomotor">Locomotor used to provide terrain costs.</param>
@@ -137,7 +137,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 
 		/// <summary>
 		/// Default: Diagonal distance heuristic. More information:
-		/// http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
+		/// https://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
 		/// Layers are ignored and incur no additional cost.
 		/// </summary>
 		/// <param name="locomotor">Locomotor used to provide terrain costs.</param>

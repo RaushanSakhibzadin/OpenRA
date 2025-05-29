@@ -58,7 +58,7 @@ namespace OpenRA.Mods.Common.FileFormats
 						var audioFormat = s.ReadInt16();
 						audioType = (WaveType)audioFormat;
 
-						if (!Enum.IsDefined(typeof(WaveType), audioType))
+						if (!Enum.IsDefined(audioType))
 							throw new NotSupportedException($"Compression type {audioFormat} is not supported.");
 
 						channels = s.ReadInt16();
@@ -197,14 +197,14 @@ namespace OpenRA.Mods.Common.FileFormats
 		public sealed class WavStreamMsAdpcm : ReadOnlyAdapterStream
 		{
 			static readonly int[] AdaptationTable =
-			{
+			[
 				230, 230, 230, 230, 307, 409, 512, 614,
 				768, 614, 512, 409, 307, 230, 230, 230
-			};
+			];
 
-			static readonly int[] AdaptCoeff1 = { 256, 512, 0, 192, 240, 460, 392 };
+			static readonly int[] AdaptCoeff1 = [256, 512, 0, 192, 240, 460, 392];
 
-			static readonly int[] AdaptCoeff2 = { 0, -256, 0, 64, 0, -208, -232 };
+			static readonly int[] AdaptCoeff2 = [0, -256, 0, 64, 0, -208, -232];
 
 			readonly short channels;
 			readonly int blockDataSize;
@@ -253,7 +253,14 @@ namespace OpenRA.Mods.Common.FileFormats
 					WriteSample(DecodeNibble((short)((bytecode >> 4) & 0x0F), bpred[0], ref chanIdelta[0], ref s1[0], ref s2[0]), data);
 
 					// Decode the second nibble, for stereo this will be the right channel
-					WriteSample(DecodeNibble((short)(bytecode & 0x0F), bpred[channelNumber], ref chanIdelta[channelNumber], ref s1[channelNumber], ref s2[channelNumber]), data);
+					WriteSample(
+						DecodeNibble(
+							(short)(bytecode & 0x0F),
+							bpred[channelNumber],
+							ref chanIdelta[channelNumber],
+							ref s1[channelNumber],
+							ref s2[channelNumber]),
+						data);
 				}
 
 				return ++currentBlock >= numBlocks;

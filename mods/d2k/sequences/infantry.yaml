@@ -79,11 +79,12 @@ light_inf:
 		Length: 12
 		Tick: 800
 		ZOffset: -511
+		Remap: 00000000
 	icon:
 		Filename: DATA.R16
 		Start: 4272
 		Offset: -30,-24
-		-Remap:
+		Remap: 00000000
 
 trooper:
 	Defaults:
@@ -165,11 +166,12 @@ trooper:
 		Length: 8
 		Tick: 800
 		ZOffset: -511
+		Remap: 00000000
 	icon:
 		Filename: DATA.R16
 		Start: 4273
 		Offset: -30,-24
-		-Remap:
+		Remap: 00000000
 
 engineer:
 	Defaults:
@@ -240,11 +242,12 @@ engineer:
 		Length: 8
 		Tick: 800
 		ZOffset: -511
+		Remap: 00000000
 	icon:
 		Filename: DATA.R16
 		Start: 4274
 		Offset: -30,-24
-		-Remap:
+		Remap: 00000000
 
 thumper:
 	Defaults:
@@ -304,7 +307,7 @@ thumper:
 		Length: 5
 		Tick: 480
 		BlendMode: Multiply
-		-Remap:
+		Remap: 00000000
 	die1:
 		Filename: DATA.R16
 		Frames: 1543, 1550, 1557, 1564, 1571, 1578, 1585, 1592, 1599, 1600, 1601, 1602
@@ -331,11 +334,12 @@ thumper:
 		Length: 8
 		Tick: 800
 		ZOffset: -511
+		Remap: 00000000
 	icon:
 		Filename: DATA.R16
 		Start: 4275
 		Offset: -30,-24
-		-Remap:
+		Remap: 00000000
 
 fremen:
 	Defaults:
@@ -418,11 +422,12 @@ fremen:
 		Length: 8
 		Tick: 800
 		ZOffset: -511
+		Remap: 00000000
 	icon:
 		Filename: DATA.R16
 		Start: 4293
 		Offset: -30,-24
-		-Remap:
+		Remap: 00000000
 
 saboteur:
 	Defaults:
@@ -493,11 +498,12 @@ saboteur:
 		Length: 8
 		Tick: 800
 		ZOffset: -511
+		Remap: 00000000
 	icon:
 		Filename: DATA.R16
 		Start: 4295
 		Offset: -30,-24
-		-Remap:
+		Remap: 00000000
 
 sardaukar:
 	Defaults:
@@ -582,11 +588,12 @@ sardaukar:
 		Length: 8
 		Tick: 800
 		ZOffset: -511
+		Remap: 00000000
 	icon:
 		Filename: DATA.R16
 		Start: 4276
 		Offset: -30,-24
-		-Remap:
+		Remap: 00000000
 
 grenadier:
 	Defaults:
@@ -639,6 +646,7 @@ grenadier:
 		Frames: 2698, 2705, 2712, 2719, 2726, 2733, 2740, 2747
 		Tick: 800
 		ZOffset: -511
+		Remap: 00000000
 	prone-stand:
 		Filename: DATA.R16
 		Start: 2622
@@ -662,7 +670,7 @@ grenadier:
 		Filename: DATA.R16
 		Start: 4297
 		Offset: -30,-24
-		-Remap:
+		Remap: 00000000
 
 sandworm:
 	mouth:

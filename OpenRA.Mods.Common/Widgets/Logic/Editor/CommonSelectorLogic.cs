@@ -19,16 +19,16 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public abstract class CommonSelectorLogic : ChromeLogic
 	{
-		[TranslationReference]
+		[FluentReference]
 		const string None = "options-common-selector.none";
 
-		[TranslationReference]
+		[FluentReference]
 		const string SearchResults = "options-common-selector.search-results";
 
-		[TranslationReference]
+		[FluentReference]
 		const string All = "options-common-selector.all";
 
-		[TranslationReference]
+		[FluentReference]
 		const string Multiple = "options-common-selector.multiple";
 
 		protected readonly Widget Widget;
@@ -40,8 +40,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		protected readonly ScrollPanelWidget Panel;
 		protected readonly ScrollItemWidget ItemTemplate;
 
-		protected readonly HashSet<string> SelectedCategories = new();
-		protected readonly List<string> FilteredCategories = new();
+		protected readonly HashSet<string> SelectedCategories = [];
+		protected readonly List<string> FilteredCategories = [];
 
 		protected string[] allCategories;
 		protected string searchFilter;
@@ -73,10 +73,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			Editor.DefaultBrush.SelectionChanged += HandleSelectionChanged;
 
-			var none = TranslationProvider.GetString(None);
-			var searchResults = TranslationProvider.GetString(SearchResults);
-			var all = TranslationProvider.GetString(All);
-			var multiple = TranslationProvider.GetString(Multiple);
+			var none = FluentProvider.GetMessage(None);
+			var searchResults = FluentProvider.GetMessage(SearchResults);
+			var all = FluentProvider.GetMessage(All);
+			var multiple = FluentProvider.GetMessage(Multiple);
 
 			var categorySelector = widget.Get<DropDownButtonWidget>("CATEGORIES_DROPDOWN");
 			categorySelector.GetText = () =>
@@ -119,7 +119,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		protected Widget CreateCategoriesPanel(ScrollPanelWidget panel)
 		{
-			var categoriesPanel = Ui.LoadWidget("CATEGORY_FILTER_PANEL", null, new WidgetArgs());
+			var categoriesPanel = Ui.LoadWidget("CATEGORY_FILTER_PANEL", null, []);
 			var categoryTemplate = categoriesPanel.Get<CheckboxWidget>("CATEGORY_TEMPLATE");
 
 			var selectButtons = categoriesPanel.Get<ContainerWidget>("SELECT_CATEGORIES_BUTTONS");
@@ -145,7 +145,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var categoryHeight = 5 + selectButtons.Bounds.Height;
 			foreach (var cat in FilteredCategories)
 			{
-				var category = (CheckboxWidget)categoryTemplate.Clone();
+				var category = categoryTemplate.Clone();
 				category.GetText = () => cat;
 				category.IsChecked = () => SelectedCategories.Contains(cat);
 				category.IsVisible = () => true;

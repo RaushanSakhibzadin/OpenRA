@@ -16,19 +16,22 @@ namespace OpenRA.Server
 {
 	sealed class PlayerMessageTracker
 	{
-		[TranslationReference("remaining")]
+		[FluentReference("remaining")]
 		const string ChatTemporaryDisabled = "notification-chat-temp-disabled";
 
-		readonly Dictionary<int, List<long>> messageTracker = new();
+		readonly Dictionary<int, List<long>> messageTracker = [];
 		readonly Server server;
 		readonly Action<Connection, int, int, byte[]> dispatchOrdersToClient;
-		readonly Action<Connection, string, Dictionary<string, object>> sendLocalizedMessageTo;
+		readonly Action<Connection, string, object[]> sendFluentMessageTo;
 
-		public PlayerMessageTracker(Server server, Action<Connection, int, int, byte[]> dispatchOrdersToClient, Action<Connection, string, Dictionary<string, object>> sendLocalizedMessageTo)
+		public PlayerMessageTracker(
+			Server server,
+			Action<Connection, int, int, byte[]> dispatchOrdersToClient,
+			Action<Connection, string, object[]> sendFluentMessageTo)
 		{
 			this.server = server;
 			this.dispatchOrdersToClient = dispatchOrdersToClient;
-			this.sendLocalizedMessageTo = sendLocalizedMessageTo;
+			this.sendFluentMessageTo = sendFluentMessageTo;
 		}
 
 		public void DisableChatUI(Connection conn, int time)
@@ -39,7 +42,7 @@ namespace OpenRA.Server
 		public bool IsPlayerAtFloodLimit(Connection conn)
 		{
 			if (!messageTracker.ContainsKey(conn.PlayerIndex))
-				messageTracker.Add(conn.PlayerIndex, new List<long>());
+				messageTracker.Add(conn.PlayerIndex, []);
 
 			var isAdmin = server.GetClient(conn)?.IsAdmin ?? false;
 			var settings = server.Settings;
@@ -53,7 +56,7 @@ namespace OpenRA.Server
 			if (!isAdmin && time < settings.FloodLimitJoinCooldown)
 			{
 				var remaining = CalculateRemaining(settings.FloodLimitJoinCooldown);
-				sendLocalizedMessageTo(conn, ChatTemporaryDisabled, Translation.Arguments("remaining", remaining));
+				sendFluentMessageTo(conn, ChatTemporaryDisabled, ["remaining", remaining]);
 				return true;
 			}
 
@@ -61,7 +64,7 @@ namespace OpenRA.Server
 			if (tracker.Count >= settings.FloodLimitMessageCount)
 			{
 				var remaining = CalculateRemaining(tracker[0] + settings.FloodLimitInterval);
-				sendLocalizedMessageTo(conn, ChatTemporaryDisabled, Translation.Arguments("remaining", remaining));
+				sendFluentMessageTo(conn, ChatTemporaryDisabled, ["remaining", remaining]);
 				return true;
 			}
 

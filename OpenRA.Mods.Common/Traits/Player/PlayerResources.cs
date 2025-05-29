@@ -27,7 +27,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string DefaultCashDropdownDescription = "The amount of cash that players start with";
 
 		[Desc("Starting cash options that are available in the lobby options.")]
-		public readonly int[] SelectableCash = { 2500, 5000, 10000, 20000 };
+		public readonly int[] SelectableCash = [2500, 5000, 10000, 20000];
 
 		[Desc("Default starting cash option: should be one of the SelectableCash options.")]
 		public readonly int DefaultCash = 5000;
@@ -45,7 +45,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Speech notification to play when the player does not have any funds.")]
 		public readonly string InsufficientFundsNotification = null;
 
-		[TranslationReference(optional: true)]
+		[FluentReference(optional: true)]
 		[Desc("Text notification to display when the player does not have any funds.")]
 		public readonly string InsufficientFundsTextNotification = null;
 
@@ -59,14 +59,15 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string CashTickDownNotification = null;
 
 		[Desc("Monetary value of each resource type.", "Dictionary of [resource type]: [value per unit].")]
-		public readonly Dictionary<string, int> ResourceValues = new();
+		public readonly Dictionary<string, int> ResourceValues = [];
 
 		IEnumerable<LobbyOption> ILobbyOptions.LobbyOptions(MapPreview map)
 		{
 			var startingCash = SelectableCash.ToDictionary(c => c.ToStringInvariant(), c => "$" + c.ToString(NumberFormatInfo.CurrentInfo));
 
 			if (startingCash.Count > 0)
-				yield return new LobbyOption(map, "startingcash", DefaultCashDropdownLabel, DefaultCashDropdownDescription, DefaultCashDropdownVisible, DefaultCashDropdownDisplayOrder,
+				yield return new LobbyOption(map, "startingcash",
+					DefaultCashDropdownLabel, DefaultCashDropdownDescription, DefaultCashDropdownVisible, DefaultCashDropdownDisplayOrder,
 					startingCash, DefaultCash.ToStringInvariant(), DefaultCashDropdownLocked);
 		}
 

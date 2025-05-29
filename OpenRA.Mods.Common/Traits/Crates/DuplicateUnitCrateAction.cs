@@ -36,7 +36,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly BitSet<TargetableType> ValidTargets = new("Ground", "Water");
 
 		[Desc("Which factions this crate action can occur for.")]
-		public readonly HashSet<string> ValidFactions = new();
+		public readonly HashSet<string> ValidFactions = [];
 
 		[Desc("Is the new duplicates given to a specific owner, regardless of whom collected it?")]
 		public readonly string Owner = null;
@@ -86,10 +86,26 @@ namespace OpenRA.Mods.Common.Traits
 			collector.World.AddFrameEndTask(w =>
 			{
 				var candidateCells = collector.World.Map.FindTilesInCircle(collector.Location, info.MaxRadius)
-					.Where(c => positionable.CanEnterCell(c)).Shuffle(collector.World.SharedRandom)
+					.Where(c => positionable.CanEnterCell(c));
+
+				var pathFinder = w.WorldActor.TraitOrDefault<IPathFinder>();
+				if (pathFinder != null)
+				{
+					var actorRules = w.Map.Rules.Actors[collector.Info.Name];
+					var locomotorName = actorRules.TraitInfoOrDefault<MobileInfo>()?.Locomotor;
+					if (locomotorName != null)
+					{
+						var locomotor = w.WorldActor.TraitsImplementing<Locomotor>().Single(l => l.Info.Name == locomotorName);
+						candidateCells = candidateCells
+							.Where(c => pathFinder.PathMightExistForLocomotorBlockedByImmovable(locomotor, c, collector.Location));
+					}
+				}
+
+				var shuffledCandidateCells = candidateCells
+					.Shuffle(collector.World.SharedRandom)
 					.ToArray();
 
-				var duplicates = Math.Min(candidateCells.Length, info.MaxAmount);
+				var duplicates = Math.Min(shuffledCandidateCells.Length, info.MaxAmount);
 
 				// Restrict duplicate count to a maximum value
 				if (info.MaxDuplicateValue > 0)
@@ -101,11 +117,11 @@ namespace OpenRA.Mods.Common.Traits
 
 				for (var i = 0; i < duplicates; i++)
 				{
-					var actor = w.CreateActor(collector.Info.Name, new TypeDictionary
-					{
-						new LocationInit(candidateCells[i]),
+					var actor = w.CreateActor(collector.Info.Name,
+					[
+						new LocationInit(shuffledCandidateCells[i]),
 						new OwnerInit(info.Owner ?? collector.Owner.InternalName)
-					});
+					]);
 
 					// Set the subcell and make sure to crush actors beneath.
 					var positionable = actor.OccupiesSpace as IPositionable;

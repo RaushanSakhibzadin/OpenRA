@@ -21,7 +21,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		[Desc("Tells the AI how to use its support powers.")]
 		[FieldLoader.LoadUsing(nameof(LoadDecisions))]
-		public readonly List<SupportPowerDecision> Decisions = new();
+		public readonly List<SupportPowerDecision> Decisions = [];
 
 		static object LoadDecisions(MiniYaml yaml)
 		{
@@ -41,9 +41,9 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		readonly World world;
 		readonly Player player;
-		readonly Dictionary<SupportPowerInstance, int> waitingPowers = new();
-		readonly Dictionary<string, SupportPowerDecision> powerDecisions = new();
-		readonly List<SupportPowerInstance> stalePowers = new();
+		readonly Dictionary<SupportPowerInstance, int> waitingPowers = [];
+		readonly Dictionary<string, SupportPowerDecision> powerDecisions = [];
+		readonly List<SupportPowerInstance> stalePowers = [];
 		SupportPowerManager supportPowerManager;
 
 		public SupportPowerBotModule(Actor self, SupportPowerBotModuleInfo info)
@@ -83,14 +83,14 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					if (powerDecision == null)
 					{
-						AIUtils.BotDebug("{0} couldn't find powerDecision for {1}", player.PlayerName, sp.Info.OrderName);
+						AIUtils.BotDebug($"{player.ResolvedPlayerName} couldn't find powerDecision for {sp.Info.OrderName}");
 						continue;
 					}
 
 					var attackLocation = FindCoarseAttackLocationToSupportPower(sp);
 					if (attackLocation == null)
 					{
-						AIUtils.BotDebug("{0} can't find suitable coarse attack location for support power {1}. Delaying rescan.", player.PlayerName, sp.Info.OrderName);
+						AIUtils.BotDebug($"{player.ResolvedPlayerName} can't find suitable coarse attack location for support power {sp.Info.OrderName}. Delaying rescan.");
 						waitingPowers[sp] += powerDecision.GetNextScanTime(world);
 
 						continue;
@@ -100,18 +100,20 @@ namespace OpenRA.Mods.Common.Traits
 					attackLocation = FindFineAttackLocationToSupportPower(sp, (CPos)attackLocation);
 					if (attackLocation == null)
 					{
-						AIUtils.BotDebug("{0} can't find suitable final attack location for support power {1}. Delaying rescan.", player.PlayerName, sp.Info.OrderName);
+						AIUtils.BotDebug($"{player.ResolvedPlayerName} can't find suitable final attack location for support power {sp.Info.OrderName}. Delaying rescan.");
 						waitingPowers[sp] += powerDecision.GetNextScanTime(world);
 
 						continue;
 					}
 
 					// Valid target found, delay by a few ticks to avoid rescanning before power fires via order
-					AIUtils.BotDebug("{0} found new target location {1} for support power {2}.", player.PlayerName, attackLocation, sp.Info.OrderName);
+					AIUtils.BotDebug($"{player.ResolvedPlayerName} found new target location {attackLocation} for support power {sp.Info.OrderName}.");
 					waitingPowers[sp] += 10;
 
 					// Note: SelectDirectionalTarget uses uint.MaxValue in ExtraData to indicate that the player did not pick a direction.
-					bot.QueueOrder(new Order(sp.Key, supportPowerManager.Self, Target.FromCell(world, attackLocation.Value), false) { SuppressVisualFeedback = true, ExtraData = uint.MaxValue });
+					bot.QueueOrder(
+						new Order(sp.Key, supportPowerManager.Self, Target.FromCell(world, attackLocation.Value), false)
+						{ SuppressVisualFeedback = true, ExtraData = uint.MaxValue });
 				}
 			}
 
@@ -129,7 +131,7 @@ namespace OpenRA.Mods.Common.Traits
 			var powerDecision = powerDecisions[readyPower.Info.OrderName];
 			if (powerDecision == null)
 			{
-				AIUtils.BotDebug("{0} couldn't find powerDecision for {1}", player.PlayerName, readyPower.Info.OrderName);
+				AIUtils.BotDebug($"{player.ResolvedPlayerName} couldn't find powerDecision for {readyPower.Info.OrderName}");
 				return null;
 			}
 
@@ -138,9 +140,9 @@ namespace OpenRA.Mods.Common.Traits
 			var suitableLocations = new List<(MPos UV, int Attractiveness)>();
 			var totalAttractiveness = 0;
 
-			for (var i = 0; i < map.MapSize.X; i += checkRadius)
+			for (var i = 0; i < map.MapSize.Width; i += checkRadius)
 			{
-				for (var j = 0; j < map.MapSize.Y; j += checkRadius)
+				for (var j = 0; j < map.MapSize.Height; j += checkRadius)
 				{
 					var tl = new MPos(i, j);
 					var br = new MPos(i + checkRadius, j + checkRadius);
@@ -151,7 +153,7 @@ namespace OpenRA.Mods.Common.Traits
 					var wbr = world.Map.CenterOfCell(br.ToCPos(map));
 					var targets = world.ActorMap.ActorsInBox(wtl, wbr);
 
-					var frozenTargets = player.FrozenActorLayer != null ? player.FrozenActorLayer.FrozenActorsInRegion(region) : Enumerable.Empty<FrozenActor>();
+					var frozenTargets = player.FrozenActorLayer != null ? player.FrozenActorLayer.FrozenActorsInRegion(region) : [];
 					var consideredAttractiveness = powerDecision.GetAttractiveness(targets, player) + powerDecision.GetAttractiveness(frozenTargets, player);
 					if (consideredAttractiveness < powerDecision.MinimumAttractiveness)
 						continue;
@@ -179,7 +181,7 @@ namespace OpenRA.Mods.Common.Traits
 			var powerDecision = powerDecisions[readyPower.Info.OrderName];
 			if (powerDecision == null)
 			{
-				AIUtils.BotDebug("{0} couldn't find powerDecision for {1}", player.PlayerName, readyPower.Info.OrderName);
+				AIUtils.BotDebug($"{player.ResolvedPlayerName} couldn't find powerDecision for {readyPower.Info.OrderName}");
 				return null;
 			}
 
@@ -216,10 +218,10 @@ namespace OpenRA.Mods.Common.Traits
 				.Select(kv => new MiniYamlNode(kv.Key.Key, FieldSaver.FormatValue(kv.Value)))
 				.ToList();
 
-			return new List<MiniYamlNode>()
-			{
+			return
+			[
 				new("WaitingPowers", "", waitingPowersNodes)
-			};
+			];
 		}
 
 		void IGameSaveTraitData.ResolveTraitData(Actor self, MiniYaml data)
